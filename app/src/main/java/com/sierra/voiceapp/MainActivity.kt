@@ -101,6 +101,15 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.hablarButton.isActivated = listening
         binding.hablarButton.contentDescription =
             getString(if (listening) R.string.btn_escuchando else R.string.btn_hablar)
+
+        // Actualiza el indicador de presencia del workspace
+        if (listening) {
+            binding.statusText.text = getString(R.string.status_listening)
+            binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.sierra_listening))
+        } else {
+            binding.statusText.text = getString(R.string.status_online)
+            binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.sierra_success))
+        }
     }
 
     private fun enviarTexto(texto: String) {
@@ -113,6 +122,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.progressBar.visibility = android.view.View.VISIBLE
         binding.enviarButton.isEnabled = false
         binding.respuestaTextView.text = getString(R.string.enviando)
+        binding.statusText.text = getString(R.string.status_processing)
+        binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.sierra_primary))
 
         val client = SierraApiClient(baseUrl = prefs.baseUrl(), token = prefs.token)
         client.enviarComando(
@@ -125,6 +136,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     private fun mostrarRespuesta(respuesta: ComandoResponse) {
         binding.progressBar.visibility = android.view.View.GONE
         binding.enviarButton.isEnabled = true
+        binding.statusText.text = getString(R.string.status_online)
+        binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.sierra_success))
 
         val texto = if (respuesta.matched) respuesta.mensaje
         else "${getString(R.string.error_sin_match)}\n\n${respuesta.mensaje}"
@@ -139,6 +152,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     private fun mostrarError(error: SierraApiError) {
         binding.progressBar.visibility = android.view.View.GONE
         binding.enviarButton.isEnabled = true
+        binding.statusText.text = getString(R.string.status_online)
+        binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.sierra_success))
 
         val mensaje = if (error.httpCode != null) {
             getString(R.string.error_servidor, error.httpCode)
