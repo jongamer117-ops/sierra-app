@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.sierra.voiceapp.databinding.ActivitySettingsBinding
@@ -18,6 +19,23 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var prefs: SierraPrefs
     private val updateClient = GithubUpdateClient()
+
+    // Guardados para poder instalar directo al volver de "instalar apps
+    // desconocidas", sin que el usuario tenga que tocar el botón de nuevo.
+    private var apkPendienteDeInstalar: File? = null
+    private var shaPendienteDeInstalar: String? = null
+
+    private val permisoInstalarLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            val archivo = apkPendienteDeInstalar
+            val sha = shaPendienteDeInstalar
+            if (archivo != null && sha != null && puedeInstalarPaquetes()) {
+                lanzarInstalador(archivo, sha)
+            } else if (archivo != null) {
+                binding.updateStatusTextView.text = getString(R.string.settings_update_permiso_requerido)
+                binding.actualizarButton.isEnabled = true
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,13 +50,6 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.saveButton.setOnClickListener { guardarYSalir() }
         binding.actualizarButton.setOnClickListener { buscarActualizacion() }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Volver de la pantalla de "instalar apps desconocidas" no debe dejar
-        // el botón bloqueado si el usuario decide reintentar.
-        binding.actualizarButton.isEnabled = true
     }
 
     private fun guardarYSalir() {
@@ -91,17 +102,28 @@ class SettingsActivity : AppCompatActivity() {
         )
     }
 
+    private fun puedeInstalarPaquetes(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
+
     private fun instalarApk(archivo: File, shaRemoto: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+        if (!puedeInstalarPaquetes()) {
+            // Guardamos qué instalar para retomar automáticamente apenas el
+            // usuario habilite el permiso y vuelva a la app, sin que tenga
+            // que tocar "Buscar actualización" de nuevo.
+            apkPendienteDeInstalar = archivo
+            shaPendienteDeInstalar = shaRemoto
             binding.updateStatusTextView.text = getString(R.string.settings_update_permiso_requerido)
-            binding.actualizarButton.isEnabled = true
             val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                 data = Uri.parse("package:$packageName")
             }
-            startActivity(intent)
+            permisoInstalarLauncher.launch(intent)
             return
         }
 
+        lanzarInstalador(archivo, shaRemoto)
+    }
+
+    private fun lanzarInstalador(archivo: File, shaRemoto: String) {
         val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", archivo)
         val installIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
@@ -111,6 +133,8 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.updateStatusTextView.text = getString(R.string.settings_update_ready)
         binding.actualizarButton.isEnabled = true
+        apkPendienteDeInstalar = null
+        shaPendienteDeInstalar = null
         prefs.lastInstalledCommitSha = shaRemoto
         startActivity(installIntent)
     }
