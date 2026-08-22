@@ -5,41 +5,80 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/sierra_bg"
-    android:padding="20dp"
+    android:padding="16dp"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/titleText"
+    <!-- Header: identidad + presencia -->
+    <LinearLayout
+        android:id="@+id/headerBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:textColor="@color/sierra_text_primary"
-        android:textSize="26sp"
-        android:textStyle="bold"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/settingsButton" />
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <ImageButton
-        android:id="@+id/settingsButton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/settings_title"
-        android:src="@drawable/ic_settings"
-        app:layout_constraintTop_toTopOf="@id/titleText"
-        app:layout_constraintBottom_toBottomOf="@id/titleText"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
+            <TextView
+                android:id="@+id/titleText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textColor="@color/sierra_primary"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/workspace_title"
+                android:textColor="@color/sierra_text_secondary"
+                android:textSize="12sp"
+                android:letterSpacing="0.08" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:text="@string/status_online"
+            android:textColor="@color/sierra_success"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:background="@drawable/bg_field"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp" />
+
+        <ImageButton
+            android:id="@+id/settingsButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/settings_title"
+            android:src="@drawable/ic_settings"
+            app:tint="@color/sierra_text_secondary" />
+    </LinearLayout>
+
+    <!-- Consola de entrada (espacio de trabajo inferior-izq conceptual) -->
     <TextView
         android:id="@+id/transcripcionLabel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/hint_transcripcion"
-        android:textColor="@color/sierra_text_secondary"
-        android:textSize="12sp"
-        app:layout_constraintTop_toBottomOf="@id/titleText"
+        android:layout_marginTop="20dp"
+        android:text="@string/label_console"
+        android:textColor="@color/sierra_text_dim"
+        android:textSize="11sp"
+        android:letterSpacing="0.12"
+        app:layout_constraintTop_toBottomOf="@id/headerBar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -53,10 +92,11 @@
         android:hint="@string/hint_transcripcion"
         android:inputType="textMultiLine|textCapSentences"
         android:minLines="2"
-        android:maxLines="4"
+        android:maxLines="3"
         android:padding="14dp"
         android:textColor="@color/sierra_text_primary"
-        android:textColorHint="@color/sierra_text_secondary"
+        android:textColorHint="@color/sierra_text_dim"
+        android:textSize="15sp"
         app:layout_constraintTop_toBottomOf="@id/transcripcionLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -65,8 +105,9 @@
         android:id="@+id/enviarButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
         android:text="@string/btn_enviar"
+        android:textAllCaps="false"
         app:layout_constraintTop_toBottomOf="@id/transcripcionEditText"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -76,44 +117,57 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
+        android:indeterminateTint="@color/sierra_primary"
         app:layout_constraintTop_toTopOf="@id/enviarButton"
         app:layout_constraintBottom_toBottomOf="@id/enviarButton"
         app:layout_constraintEnd_toStartOf="@id/enviarButton"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <!-- Pantalla holográfica central (el "cuarto" / display principal) -->
     <TextView
         android:id="@+id/respuestaLabel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="16dp"
         android:text="@string/label_respuesta"
-        android:textColor="@color/sierra_text_secondary"
-        android:textSize="12sp"
+        android:textColor="@color/sierra_text_dim"
+        android:textSize="11sp"
+        android:letterSpacing="0.12"
         app:layout_constraintTop_toBottomOf="@id/enviarButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <ScrollView
-        android:id="@+id/respuestaScroll"
+    <FrameLayout
+        android:id="@+id/hologramFrame"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="6dp"
-        android:background="@drawable/bg_field"
-        android:padding="14dp"
+        android:background="@drawable/bg_panel"
+        android:elevation="8dp"
         app:layout_constraintTop_toBottomOf="@id/respuestaLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/leerSwitch">
 
-        <TextView
-            android:id="@+id/respuestaTextView"
+        <ScrollView
+            android:id="@+id/respuestaScroll"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/hint_respuesta"
-            android:textColor="@color/sierra_text_primary"
-            android:textSize="16sp" />
-    </ScrollView>
+            android:layout_height="match_parent"
+            android:padding="16dp"
+            android:fillViewport="true">
 
+            <TextView
+                android:id="@+id/respuestaTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/hint_respuesta"
+                android:textColor="@color/sierra_text_primary"
+                android:textSize="16sp"
+                android:lineSpacingExtra="4dp" />
+        </ScrollView>
+    </FrameLayout>
+
+    <!-- Controles inferiores: switch + nodo de activación (mic) -->
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/leerSwitch"
         android:layout_width="0dp"
@@ -128,12 +182,12 @@
 
     <ImageButton
         android:id="@+id/hablarButton"
-        android:layout_width="84dp"
-        android:layout_height="84dp"
-        android:layout_marginBottom="8dp"
+        android:layout_width="88dp"
+        android:layout_height="88dp"
+        android:layout_marginBottom="4dp"
         android:background="@drawable/bg_mic_button"
         android:contentDescription="@string/btn_hablar"
-        android:elevation="6dp"
+        android:elevation="12dp"
         android:src="@drawable/ic_mic"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

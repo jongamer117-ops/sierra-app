@@ -1,82 +1,54 @@
-# Sierra Voice App
+# Sierra — Espacio de trabajo holográfico
 
-App Android (Kotlin) que habla con **Sierra** en `sierra-pc` a través de la
-IP de Tailscale de la PC. Usa el `SpeechRecognizer` nativo de Android para
-voz → texto (sin librerías externas de STT), llama al endpoint `/comando`
-del backend, y opcionalmente lee la respuesta en voz alta con el
-`TextToSpeech` nativo.
+App Android (Kotlin) que te conecta con **Sierra**, una IA con su propio cuarto / workspace visual.
 
-## Estructura
+La interfaz está rediseñada para sentirse como el espacio de operaciones de una IA: pantalla holográfica central, consola de entrada y nodo de activación por voz. Todo sigue hablando con el backend en `sierra-pc` a través de la IP de Tailscale.
 
-- `MainActivity`: botón de micrófono, campo de transcripción editable,
-  botón "Enviar", área de respuesta, switch de lectura en voz alta.
-- `SettingsActivity`: IP, puerto y token del servidor (persistidos en
-  `SharedPreferences` vía `SierraPrefs`), porque el backend todavía no
-  está desplegado y esos valores pueden cambiar.
-- `network/SierraApiClient`: cliente OkHttp para `POST /comando`.
+## Concepto del rediseño
+
+- **Cuarto / Workspace de la IA**: la UI simula un entorno 3D-estético (paneles flotantes, glow, profundidad) donde Sierra “habita” y trabaja.
+- Header con presencia activa.
+- Pantalla holográfica grande para las respuestas.
+- Consola de texto + micrófono como punto de interacción directa.
+
+> Nota: un verdadero entorno 3D interactivo (modelo de habitación navegable) requeriría un motor 3D (Filament / OpenGL / WebGL). Esta versión entrega la estética y el espacio de trabajo listos; se puede evolucionar después.
+
+## Estructura técnica (sin cambios de lógica)
+
+- `MainActivity`: micrófono, transcripción editable, envío, área de respuesta, TTS.
+- `SettingsActivity`: IP, puerto y token (SharedPreferences vía `SierraPrefs`).
+- `network/SierraApiClient`: OkHttp → `POST /comando`.
 
 ## Permisos
 
-- `INTERNET`: para hablar con Sierra por HTTP.
-- `RECORD_AUDIO`: para el micrófono. Se pide en runtime al tocar el botón
-  de hablar (Android 6+).
+- `INTERNET`
+- `RECORD_AUDIO` (runtime)
 
 ## Conectividad
 
-La IP por defecto es `100.86.158.55` (Tailscale). El celular necesita la
-app de Tailscale de Android instalada y conectada a la misma red para que
-esa IP sea alcanzable. Como Sierra corre sin TLS dentro de la VPN, la app
-permite tráfico HTTP en claro (`network_security_config.xml`); no está
-pensada para hablar con servidores fuera de la red de Tailscale.
+IP por defecto: `100.86.158.55` (Tailscale). El celular debe estar en la misma red Tailscale. Tráfico HTTP permitido solo dentro de la VPN (`network_security_config.xml`).
 
-## Contrato asumido para `/comando`
-
-El mensaje original con el JSON exacto del backend llegó sin el contenido
-de los bloques de código (se perdió en el copiado). Mientras se termina de
-construir el servidor, la app asume esto y es fácil de ajustar en un solo
-lugar (`SierraApiClient.parseComando`):
+## Contrato `/comando`
 
 **Request**
 ```
 POST http://<ip>:<puerto>/comando
 Content-Type: application/json
-X-Sierra-Token-Poco: <token>   (si está configurado)
+X-Sierra-Token-Poco: <token>   (opcional)
 
 { "texto": "lo que dijo el usuario" }
 ```
 
-**Response esperada (200)** — se acepta cualquiera de estos campos para el
-mensaje: `respuesta`, `mensaje`, `message`, `texto`. Opcionalmente un
-booleano `matched`.
-```json
-{ "respuesta": "texto de la respuesta", "matched": true }
-```
-
-**Si no matchea nada** — se acepta un campo `error`, o `matched: false`:
-```json
-{ "error": "no encontré ningún comando" }
-```
-
-Si el backend termina usando otros nombres de campo, solo hay que tocar
-`parseComando()` en `SierraApiClient.kt` — el resto de la app no depende
-del shape exacto del JSON.
+**Response** — acepta `respuesta` / `mensaje` / `message` / `texto` y opcionalmente `matched`.
 
 ## Build
-
-Requiere Android Studio (o Android SDK + `dl.google.com` accesible, ya que
-el plugin de Android y las libs de androidx/material se descargan de ahí).
-En este sandbox de desarrollo `dl.google.com` está bloqueado por política
-de red, así que el proyecto **no se compiló localmente**; el código fue
-revisado a mano. Para compilar:
 
 ```
 ./gradlew assembleDebug
 ```
 
-## Pendiente del lado del servidor
+Requiere Android Studio / SDK con acceso a `dl.google.com`.
 
-- Endpoint `/comando` en sierra-pc (texto → GLM + keywords → Canal A).
-- Token `X-Sierra-Token-Poco`.
+## Branch de este rediseño
 
-Cuando eso esté listo, avisar para ajustar `SettingsActivity` (valores por
-defecto) y `parseComando()` si el JSON real difiere de lo asumido acá.
+`redesign/ai-room-workspace`
