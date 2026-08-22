@@ -36,6 +36,11 @@
             android:exported="false"
             android:label="@string/settings_title" />
 
+        <activity
+            android:name=".ConfirmacionesActivity"
+            android:exported="false"
+            android:label="@string/confirmaciones_title" />
+
     </application>
 
 </manifest>

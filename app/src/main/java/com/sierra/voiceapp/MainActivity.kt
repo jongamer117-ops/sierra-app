@@ -62,6 +62,9 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.settingsButton.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        binding.confirmacionesButton.setOnClickListener {
+            startActivity(Intent(this, ConfirmacionesActivity::class.java))
+        }
     }
 
     private fun onMicPressed() {

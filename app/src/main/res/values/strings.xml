@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Sierra</string>
     <string name="settings_title">Ajustes de conexión</string>
+    <string name="chat_subtitle">Chat con Sierra (voz o texto) — no es la pantalla de confirmaciones</string>
 
     <string name="hint_transcripcion">Lo que dijiste aparecerá aquí…</string>
     <string name="hint_respuesta">La respuesta de Sierra aparecerá aquí…</string>
@@ -10,12 +11,25 @@
     <string name="btn_enviar">Enviar</string>
     <string name="btn_escuchando">Escuchando…</string>
     <string name="switch_leer_respuesta">Leer respuesta en voz alta</string>
+    <string name="btn_ver_confirmaciones">Confirmaciones pendientes</string>
 
     <string name="settings_ip_label">IP del servidor (Tailscale)</string>
     <string name="settings_port_label">Puerto</string>
-    <string name="settings_token_label">Token (X-Sierra-Token-Poco)</string>
+    <string name="settings_token_label">Token (X-Sierra-Token)</string>
     <string name="settings_save">Guardar</string>
     <string name="settings_saved">Ajustes guardados</string>
+    <string name="settings_token_requerido">El token es obligatorio: Canal A rechaza cualquier pedido sin él</string>
+
+    <string name="confirmaciones_title">Confirmaciones pendientes</string>
+    <string name="confirmaciones_subtitle">Acciones de Nivel 3 esperando tu aprobación — cada una es una decisión individual</string>
+    <string name="confirmaciones_vacio">No hay confirmaciones pendientes</string>
+    <string name="confirmacion_expira_en">Expira en %1$d:%2$02d</string>
+    <string name="confirmacion_expirada">Expirada</string>
+    <string name="confirmacion_expira_desconocido">No se pudo calcular el tiempo restante</string>
+    <string name="confirmacion_aprobada">Confirmación aprobada</string>
+    <string name="confirmacion_rechazada">Confirmación rechazada</string>
+    <string name="btn_aprobar">Aprobar</string>
+    <string name="btn_rechazar">Rechazar</string>
 
     <string name="error_no_mic_permission">Se necesita permiso de micrófono para hablar con Sierra</string>
     <string name="error_no_recognition">Este dispositivo no tiene reconocimiento de voz disponible</string>
@@ -23,5 +37,6 @@
     <string name="error_conexion">No se pudo conectar a Sierra (%1$s). Revisá Tailscale y los ajustes.</string>
     <string name="error_servidor">Sierra respondió con un error (%1$d)</string>
     <string name="error_sin_match">Sierra no encontró ningún comando que coincida.</string>
+    <string name="error_falta_token">Falta configurar el token en Ajustes</string>
     <string name="enviando">Enviando a Sierra…</string>
 </resources>

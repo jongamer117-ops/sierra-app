@@ -25,9 +25,14 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun guardarYSalir() {
+        val token = binding.tokenEditText.text.toString().trim()
+        if (token.isEmpty()) {
+            Toast.makeText(this, R.string.settings_token_requerido, Toast.LENGTH_LONG).show()
+            return
+        }
+
         val ip = binding.ipEditText.text.toString().trim().ifEmpty { SierraPrefs.DEFAULT_IP }
         val port = binding.portEditText.text.toString().trim().toIntOrNull() ?: SierraPrefs.DEFAULT_PORT
-        val token = binding.tokenEditText.text.toString().trim()
 
         prefs.serverIp = ip
         prefs.serverPort = port
