@@ -12,6 +12,22 @@
     <string name="btn_escuchando">Escuchando…</string>
     <string name="switch_leer_respuesta">Leer respuesta en voz alta</string>
     <string name="btn_ver_confirmaciones">Confirmaciones pendientes</string>
+    <string name="btn_ver_acciones">Acciones</string>
+
+    <string name="acciones_title">Acciones</string>
+    <string name="acciones_subtitle">Decí qué querés hacer, o usá los controles de abajo — sin IA en el medio, solo acciones fijas y automáticas</string>
+    <string name="acciones_manual_title">O elegí manual</string>
+    <string name="btn_ver_hora">Ver la hora</string>
+    <string name="btn_abrir_firefox">Abrir Firefox</string>
+    <string name="hint_buscar_youtube">qué buscar en YouTube</string>
+    <string name="btn_buscar_youtube">Buscar en YouTube</string>
+    <string name="hint_ver_archivo">nombre del archivo en Descargas</string>
+    <string name="btn_ver_archivo">Ver archivo</string>
+    <string name="acciones_resumen_busqueda">Buscar \"%1$s\" en YouTube</string>
+    <string name="acciones_resumen_archivo">Abrir \"%1$s\"</string>
+    <string name="acciones_no_entendido">No entendí qué acción hacer con: \"%1$s\"</string>
+    <string name="acciones_enviando">Enviando: %1$s…</string>
+    <string name="acciones_enviado">Hecho: %1$s</string>
 
     <string name="settings_ip_label">IP del servidor (Tailscale)</string>
     <string name="settings_port_label">Puerto</string>
