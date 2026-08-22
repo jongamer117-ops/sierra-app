@@ -43,11 +43,6 @@
             android:exported="false"
             android:label="@string/confirmaciones_title" />
 
-        <activity
-            android:name=".AccionesActivity"
-            android:exported="false"
-            android:label="@string/acciones_title" />
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

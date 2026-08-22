@@ -2,7 +2,8 @@
 <resources>
     <string name="app_name">Sierra</string>
     <string name="settings_title">Ajustes de conexión</string>
-    <string name="chat_subtitle">Chat con Sierra (voz o texto) — no es la pantalla de confirmaciones</string>
+    <string name="chat_subtitle">Hablá con Sierra — comandos rápidos automáticos, o chat. No es la pantalla de confirmaciones</string>
+    <string name="hint_comando_rapido">Si decís "qué hora es", "abrí Firefox" o "buscá X en YouTube", lo hace directo sin pasar por el chat</string>
 
     <string name="hint_transcripcion">Lo que dijiste aparecerá aquí…</string>
     <string name="hint_respuesta">La respuesta de Sierra aparecerá aquí…</string>
@@ -12,10 +13,7 @@
     <string name="btn_escuchando">Escuchando…</string>
     <string name="switch_leer_respuesta">Leer respuesta en voz alta</string>
     <string name="btn_ver_confirmaciones">Confirmaciones pendientes</string>
-    <string name="btn_ver_acciones">Acciones</string>
 
-    <string name="acciones_title">Acciones</string>
-    <string name="acciones_subtitle">Decí qué querés hacer, o usá los controles de abajo — sin IA en el medio, solo acciones fijas y automáticas</string>
     <string name="acciones_manual_title">O elegí manual</string>
     <string name="btn_ver_hora">Ver la hora</string>
     <string name="btn_abrir_firefox">Abrir Firefox</string>
