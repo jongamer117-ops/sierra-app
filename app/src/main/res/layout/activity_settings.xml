@@ -83,4 +83,25 @@
         android:layout_height="wrap_content"
         android:text="@string/settings_save" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/sierra_surface" />
+
+    <Button
+        android:id="@+id/actualizarButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_update_button" />
+
+    <TextView
+        android:id="@+id/updateStatusTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/sierra_text_secondary"
+        android:textSize="12sp" />
+
 </LinearLayout>

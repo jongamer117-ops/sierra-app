@@ -10,10 +10,17 @@ del backend, y opcionalmente lee la respuesta en voz alta con el
 
 - `MainActivity`: botón de micrófono, campo de transcripción editable,
   botón "Enviar", área de respuesta, switch de lectura en voz alta.
-- `SettingsActivity`: IP, puerto y token del servidor (persistidos en
-  `SharedPreferences` vía `SierraPrefs`), porque el backend todavía no
-  está desplegado y esos valores pueden cambiar.
+- `SettingsActivity`: IP, puerto y token del servidor (persistidos cifrados
+  con `EncryptedSharedPreferences` vía `SierraPrefs`), más el botón de
+  actualización que descarga el APK más reciente desde la rama
+  `apk-latest` en GitHub.
+- `ConfirmacionesActivity`: confirmaciones de Nivel 3 pendientes en Canal A
+  (aprobar/rechazar individualmente, nunca "aprobar todo").
 - `network/SierraApiClient`: cliente OkHttp para `POST /comando`.
+- `network/CanalAConfirmationsClient`: cliente OkHttp para `/confirmations/*`
+  en Canal A (header `X-Sierra-Token`).
+- `network/GithubUpdateClient`: chequea el commit más reciente en
+  `apk-latest` y descarga el APK para reinstalarlo.
 
 ## Permisos
 
