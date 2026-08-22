@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sierra corre en la red privada de Tailscale (100.64.0.0/10), sin TLS,
+  y la IP/puerto del servidor son configurables en Ajustes. Como Android
+  no permite expresar un rango CIDR en network-security-config, se
+  permite tráfico en claro (HTTP) a nivel de toda la app: es una app
+  interna que solo habla con la propia VPN de Tailscale, no con internet
+  público.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

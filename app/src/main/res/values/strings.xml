@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sierra</string>
+    <string name="settings_title">Ajustes de conexión</string>
+
+    <string name="hint_transcripcion">Lo que dijiste aparecerá aquí…</string>
+    <string name="hint_respuesta">La respuesta de Sierra aparecerá aquí…</string>
+    <string name="label_respuesta">Respuesta</string>
+    <string name="btn_hablar">Hablar</string>
+    <string name="btn_enviar">Enviar</string>
+    <string name="btn_escuchando">Escuchando…</string>
+    <string name="switch_leer_respuesta">Leer respuesta en voz alta</string>
+
+    <string name="settings_ip_label">IP del servidor (Tailscale)</string>
+    <string name="settings_port_label">Puerto</string>
+    <string name="settings_token_label">Token (X-Sierra-Token-Poco)</string>
+    <string name="settings_save">Guardar</string>
+    <string name="settings_saved">Ajustes guardados</string>
+
+    <string name="error_no_mic_permission">Se necesita permiso de micrófono para hablar con Sierra</string>
+    <string name="error_no_recognition">Este dispositivo no tiene reconocimiento de voz disponible</string>
+    <string name="error_texto_vacio">Decí o escribí algo primero</string>
+    <string name="error_conexion">No se pudo conectar a Sierra (%1$s). Revisá Tailscale y los ajustes.</string>
+    <string name="error_servidor">Sierra respondió con un error (%1$d)</string>
+    <string name="error_sin_match">Sierra no encontró ningún comando que coincida.</string>
+    <string name="enviando">Enviando a Sierra…</string>
+</resources>
