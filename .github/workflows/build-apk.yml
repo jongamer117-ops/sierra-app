@@ -24,8 +24,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Compute version info
+        id: version
+        run: |
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
+        env:
+          SIERRA_VERSION_CODE: ${{ steps.version.outputs.code }}
+          SIERRA_VERSION_NAME: ${{ steps.version.outputs.name }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

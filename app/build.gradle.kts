@@ -11,8 +11,12 @@ android {
         applicationId = "com.sierra.voiceapp"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // Inyectados por CI (run number + commit corto) para que cada build
+        // sea distinguible y Android no ignore una instalacion con el mismo
+        // version code que la anterior. En un build local sin esas variables,
+        // caen en un default fijo.
+        versionCode = System.getenv("SIERRA_VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = System.getenv("SIERRA_VERSION_NAME") ?: "1.0-local"
     }
 
     buildTypes {
@@ -35,6 +39,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

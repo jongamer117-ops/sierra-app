@@ -50,6 +50,10 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.saveButton.setOnClickListener { guardarYSalir() }
         binding.actualizarButton.setOnClickListener { buscarActualizacion() }
+
+        binding.versionTextView.text = getString(
+            R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE
+        )
     }
 
     private fun guardarYSalir() {

@@ -42,6 +42,7 @@
     <string name="settings_update_ready">Actualización descargada, abriendo el instalador…</string>
     <string name="settings_update_error">No se pudo actualizar: %1$s</string>
     <string name="settings_update_permiso_requerido">Habilitá \"Instalar apps desconocidas\" para Sierra — al volver, se instala sola</string>
+    <string name="settings_version">Versión %1$s (build %2$d)</string>
 
     <string name="confirmaciones_title">Confirmaciones pendientes</string>
     <string name="confirmaciones_subtitle">Acciones de Nivel 3 esperando tu aprobación — cada una es una decisión individual</string>
