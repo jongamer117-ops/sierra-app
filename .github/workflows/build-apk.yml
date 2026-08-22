@@ -28,7 +28,7 @@ jobs:
         id: version
         run: |
           echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "name=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "name=1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
