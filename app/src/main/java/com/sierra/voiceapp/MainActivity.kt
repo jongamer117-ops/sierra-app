@@ -8,6 +8,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -102,13 +103,23 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.hablarButton.contentDescription =
             getString(if (listening) R.string.btn_escuchando else R.string.btn_hablar)
 
+        // Animación sutil de escala en el nodo de activación
+        binding.hablarButton.animate()
+            .scaleX(if (listening) 1.08f else 1.0f)
+            .scaleY(if (listening) 1.08f else 1.0f)
+            .setDuration(180)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .start()
+
         // Actualiza el indicador de presencia del workspace
         if (listening) {
             binding.statusText.text = getString(R.string.status_listening)
             binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.sierra_listening))
+            binding.presenceOrb.alpha = 1.0f
         } else {
             binding.statusText.text = getString(R.string.status_online)
             binding.statusText.setTextColor(ContextCompat.getColor(this, R.color.sierra_success))
+            binding.presenceOrb.alpha = 0.85f
         }
     }
 

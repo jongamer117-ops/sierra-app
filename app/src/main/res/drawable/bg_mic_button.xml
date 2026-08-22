@@ -1,19 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Escuchando -->
     <item android:state_activated="true">
-        <shape android:shape="oval">
-            <solid android:color="@color/sierra_listening" />
-            <stroke
-                android:width="3dp"
-                android:color="#FF8FAB" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="#33FF6B9D" />
+                    <stroke
+                        android:width="4dp"
+                        android:color="#FF8FAB" />
+                </shape>
+            </item>
+            <item
+                android:left="8dp"
+                android:top="8dp"
+                android:right="8dp"
+                android:bottom="8dp">
+                <shape android:shape="oval">
+                    <solid android:color="@color/sierra_listening" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
+    <!-- Normal -->
     <item>
-        <shape android:shape="oval">
-            <solid android:color="@color/sierra_primary" />
-            <stroke
-                android:width="2dp"
-                android:color="@color/sierra_glow" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="#1A00D4FF" />
+                    <stroke
+                        android:width="2.5dp"
+                        android:color="#40E0FF" />
+                </shape>
+            </item>
+            <item
+                android:left="7dp"
+                android:top="7dp"
+                android:right="7dp"
+                android:bottom="7dp">
+                <shape android:shape="oval">
+                    <solid android:color="@color/sierra_primary" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
 </selector>
