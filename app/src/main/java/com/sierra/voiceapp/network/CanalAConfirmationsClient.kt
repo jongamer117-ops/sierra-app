@@ -23,7 +23,7 @@ data class ConfirmacionPendiente(
 class CanalAApiError(message: String, val httpCode: Int? = null) : Exception(message)
 
 /**
- * Cliente para los endpoints /confirmations/* de Canal A. Usa el header
+ * Cliente para los endpoints de confirmaciones de Canal A. Usa el header
  * X-Sierra-Token, el mismo que espera el resto de la API de Canal A.
  */
 class CanalAConfirmationsClient(
