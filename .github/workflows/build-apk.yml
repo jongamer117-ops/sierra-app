@@ -1,0 +1,64 @@
+name: Build debug APK
+
+on:
+  push:
+    branches:
+      - claude/apk-download-x1b246
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Compute version info
+        id: version
+        run: |
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+        env:
+          SIERRA_VERSION_CODE: ${{ steps.version.outputs.code }}
+          SIERRA_VERSION_NAME: ${{ steps.version.outputs.name }}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sierra-voice-app-debug
+          path: app/build/outputs/apk/debug/*.apk
+
+      # Actions artifacts live on Azure Blob Storage, which some sandboxed
+      # dev environments can't reach. Also publish the APK straight into
+      # git (an orphan branch, force-pushed each run) so it can be pulled
+      # with a plain `git fetch` from anywhere that can reach GitHub.
+      - name: Publish APK to apk-latest branch
+        run: |
+          apk_path=$(find app/build/outputs/apk/debug -name '*.apk' | head -n1)
+          mkdir /tmp/apk-publish
+          cp "$apk_path" /tmp/apk-publish/sierra-voice-app-debug.apk
+          cd /tmp/apk-publish
+          git init -q
+          git checkout -q -b apk-latest
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sierra-voice-app-debug.apk
+          git commit -q -m "APK from ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin apk-latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
