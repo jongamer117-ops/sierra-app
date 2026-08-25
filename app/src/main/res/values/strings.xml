@@ -18,10 +18,12 @@
     <string name="backend_cambiado_local">Cambiado a Hermes local</string>
 
     <string name="label_generar_imagen">Generar imagen</string>
-    <string name="hint_generar_imagen_nota">Necesita a Cortana (acciones reales) y tu aprobación en Confirmaciones — con Hermes local no genera nada, solo charla</string>
+    <string name="hint_generar_imagen_nota">Nivel 1: se genera directo, sin pasar por Cortana ni pedir confirmación</string>
     <string name="hint_generar_imagen">describí la imagen que querés…</string>
     <string name="btn_generar_imagen">Generar imagen</string>
     <string name="error_prompt_imagen_vacio">Escribí qué imagen querés primero</string>
+    <string name="generando_imagen">Generando imagen… (~10-20s)</string>
+    <string name="imagen_generada">Pedido enviado — te llega a Telegram en ~10-20s</string>
 
     <string name="settings_ip_label">IP del servidor (Tailscale)</string>
     <string name="settings_port_label">Puerto</string>

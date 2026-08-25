@@ -14,6 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sierra.voiceapp.databinding.ActivityMainBinding
+import com.sierra.voiceapp.network.CanalADirectClient
+import com.sierra.voiceapp.network.CanalADirectError
 import com.sierra.voiceapp.network.ComandoResponse
 import com.sierra.voiceapp.network.SierraApiClient
 import com.sierra.voiceapp.network.SierraApiError
@@ -86,10 +88,41 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             Toast.makeText(this, R.string.error_prompt_imagen_vacio, Toast.LENGTH_SHORT).show()
             return
         }
-        // Sigue yendo por el chat -- generate_image es Nivel 3, solo Cortana
-        // lo puede pedir (nunca una accion directa sin decisor), y necesita
-        // tu confirmacion en la app igual que cualquier otra accion real.
-        enviarTexto("Generá una imagen con esta descripción: $descripcion")
+        if (!prefs.hasToken()) {
+            Toast.makeText(this, R.string.error_falta_token, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        binding.respuestaTextView.text = getString(R.string.generando_imagen)
+
+        // generate_image es Nivel 1 (reclasificado 2026-08-25: rapido, local,
+        // bajo riesgo -- a diferencia de generate_video, que sigue en Nivel 3
+        // y sigue yendo por Cortana + confirmacion). Directo a Canal A, sin
+        // IA en el medio.
+        val client = CanalADirectClient(baseUrl = prefs.baseUrl(), token = prefs.token)
+        client.crearTareaNivel1(
+            action = "generate_image",
+            params = mapOf("prompt" to descripcion),
+            onSuccess = {
+                runOnUiThread {
+                    binding.respuestaTextView.text = getString(R.string.imagen_generada)
+                    if (binding.leerSwitch.isChecked && ttsReady) {
+                        textToSpeech?.speak(
+                            getString(R.string.imagen_generada), TextToSpeech.QUEUE_FLUSH, null, "sierra_imagen"
+                        )
+                    }
+                }
+            },
+            onError = { error -> runOnUiThread { mostrarErrorImagen(error) } }
+        )
+    }
+
+    private fun mostrarErrorImagen(error: CanalADirectError) {
+        binding.respuestaTextView.text = if (error.httpCode != null) {
+            getString(R.string.error_servidor, error.httpCode)
+        } else {
+            getString(R.string.error_conexion, error.message ?: "")
+        }
     }
 
     private fun actualizarChipBackend() {
