@@ -34,7 +34,9 @@ class SierraApiClient(
 ) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        // El modelo local puede tardar en cargar en la GPU si estaba
+        // descargado por inactividad; 30s se quedaba corto en pruebas reales.
+        .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(10, TimeUnit.SECONDS)
         .build()
 
@@ -54,7 +56,7 @@ class SierraApiClient(
             .post(body)
 
         if (token.isNotBlank()) {
-            requestBuilder.addHeader("X-Sierra-Token-Poco", token)
+            requestBuilder.addHeader("X-Sierra-Token", token)
         }
 
         client.newCall(requestBuilder.build()).enqueue(object : Callback {
