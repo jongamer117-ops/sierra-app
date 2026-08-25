@@ -19,6 +19,21 @@ android {
         versionName = System.getenv("SIERRA_VERSION_NAME") ?: "1.0-local"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // Keystore de debug fijo y committeado (generado con openssl, formato
+            // PKCS12) -- sin esto, cada build de CI firma con una clave distinta
+            // (la que Gradle autogenera por defecto en un runner efimero) y
+            // Android rechaza instalar la version nueva encima de la vieja
+            // ("conflicto con un paquete").
+            storeFile = file("debug.keystore")
+            storeType = "PKCS12"
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
