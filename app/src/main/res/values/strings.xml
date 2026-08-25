@@ -29,8 +29,9 @@
     <string name="settings_version">Versión %1$s (build %2$d)</string>
     <string name="settings_vigilancia_label">Avisar con notificación cuando haya algo que aprobar</string>
 
-    <string name="settings_chat_title">Chat (Hermes local, temporal — cuota de Cortana agotada hasta 1 sep)</string>
-    <string name="settings_chat_ip_label">IP del PC (Tailscale)</string>
+    <string name="settings_chat_title">Chat</string>
+    <string name="settings_usar_cortana_label">Usar Cortana (acciones reales — necesita cuota de Sonnet). Apagado: Hermes local, solo charla, gratis</string>
+    <string name="settings_chat_ip_label">IP del servidor (Tailscale)</string>
     <string name="settings_chat_port_label">Puerto</string>
     <string name="settings_chat_token_label">Token del chat</string>
 

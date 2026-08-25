@@ -58,6 +58,13 @@ class SierraPrefs(context: Context) {
 
     fun chatBaseUrl(): String = "http://$chatIp:$chatPort"
 
+    /** Si el switch "Usar Cortana" de Ajustes está activo -- solo para
+     * mostrar el estado correcto del switch al volver a abrir la pantalla,
+     * el ruteo real lo deciden chatIp/chatPort/chatToken. */
+    var usarCortana: Boolean
+        get() = prefs.getBoolean(KEY_USAR_CORTANA, false)
+        set(value) = prefs.edit().putBoolean(KEY_USAR_CORTANA, value).apply()
+
     /** SHA del commit del APK instalado actualmente, para saber si hay uno más nuevo en apk-latest. */
     var lastInstalledCommitSha: String
         get() = prefs.getString(KEY_LAST_APK_SHA, "") ?: ""
@@ -79,18 +86,28 @@ class SierraPrefs(context: Context) {
         private const val KEY_CHAT_IP = "chat_server_ip"
         private const val KEY_CHAT_PORT = "chat_server_port"
         private const val KEY_CHAT_TOKEN = "chat_server_token"
+        private const val KEY_USAR_CORTANA = "chat_usar_cortana"
 
         // Canal A (FastAPI + SQLite en sierra-server), no sierra-pc directo.
         const val DEFAULT_IP = "100.71.115.36"
         const val DEFAULT_PORT = 8200
 
-        // Puente /comando: TEMPORALMENTE apunta a Hermes local (glm-4.7-flash,
-        // sierra-pc, solo charla) en vez de a Cortana (sierra-server:8301) --
-        // la cuota de la API de Claude se agoto (limite hasta 2026-09-01), asi
-        // que Cortana no puede responder nada hasta esa fecha. Volver a
-        // 100.71.115.36:8301 cuando se restablezca. Ver ESTADO-PROYECTO-SIERRA.md
-        // (repo docs) para el detalle completo.
+        // Puente /comando: por default en Hermes local (glm-4.7-flash,
+        // sierra-pc, solo charla, gratis) -- la cuota de la API de Claude se
+        // agoto (limite hasta 2026-09-01), asi que Cortana no puede responder
+        // nada hasta esa fecha. El switch de Ajustes deja cambiar entre los
+        // dos con un toque, sin tener que escribir IP/puerto/token a mano.
         const val DEFAULT_CHAT_IP = "100.86.158.55"
         const val DEFAULT_CHAT_PORT = 8300
+
+        // Presets fijos para el switch "Usar Cortana" de Ajustes -- los dos
+        // bridges y tokens ya conocidos, no hace falta que Jon los escriba.
+        const val CORTANA_CHAT_IP = "100.71.115.36"
+        const val CORTANA_CHAT_PORT = 8301
+        const val CORTANA_CHAT_TOKEN = "55c3d9216df06f1ae26efe789c41f9bf"
+
+        const val HERMES_LOCAL_CHAT_IP = "100.86.158.55"
+        const val HERMES_LOCAL_CHAT_PORT = 8300
+        const val HERMES_LOCAL_CHAT_TOKEN = "e7b7191210abce26e67aab7ef356316f"
     }
 }

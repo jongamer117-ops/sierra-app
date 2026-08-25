@@ -53,6 +53,9 @@ class SettingsActivity : AppCompatActivity() {
         binding.chatPortEditText.setText(prefs.chatPort.toString())
         binding.chatTokenEditText.setText(prefs.chatToken)
 
+        binding.usarCortanaSwitch.isChecked = prefs.usarCortana
+        binding.usarCortanaSwitch.setOnCheckedChangeListener { _, checked -> aplicarPresetDeChat(checked) }
+
         binding.saveButton.setOnClickListener { guardarYSalir() }
         binding.saveButtonTop.setOnClickListener { guardarYSalir() }
         binding.actualizarButton.setOnClickListener { buscarActualizacion() }
@@ -60,6 +63,18 @@ class SettingsActivity : AppCompatActivity() {
         binding.versionTextView.text = getString(
             R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE
         )
+    }
+
+    private fun aplicarPresetDeChat(usarCortana: Boolean) {
+        if (usarCortana) {
+            binding.chatIpEditText.setText(SierraPrefs.CORTANA_CHAT_IP)
+            binding.chatPortEditText.setText(SierraPrefs.CORTANA_CHAT_PORT.toString())
+            binding.chatTokenEditText.setText(SierraPrefs.CORTANA_CHAT_TOKEN)
+        } else {
+            binding.chatIpEditText.setText(SierraPrefs.HERMES_LOCAL_CHAT_IP)
+            binding.chatPortEditText.setText(SierraPrefs.HERMES_LOCAL_CHAT_PORT.toString())
+            binding.chatTokenEditText.setText(SierraPrefs.HERMES_LOCAL_CHAT_TOKEN)
+        }
     }
 
     private fun guardarYSalir() {
@@ -82,6 +97,7 @@ class SettingsActivity : AppCompatActivity() {
         prefs.chatIp = chatIp
         prefs.chatPort = chatPort
         prefs.chatToken = binding.chatTokenEditText.text.toString().trim()
+        prefs.usarCortana = binding.usarCortanaSwitch.isChecked
 
         Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
         finish()
