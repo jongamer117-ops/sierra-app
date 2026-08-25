@@ -77,4 +77,23 @@
     <string name="error_sin_match">Sierra no encontró ningún comando que coincida.</string>
     <string name="error_falta_token">Falta configurar el token en Ajustes</string>
     <string name="enviando">Enviando a Sierra…</string>
+
+    <!-- VNC -->
+    <string name="vnc_title">Pantalla de sierra-pc</string>
+    <string name="btn_ver_pantalla">Ver pantalla</string>
+    <string name="vnc_conectando">Conectando a sierra-pc…</string>
+    <string name="vnc_conectado">Conectado — %1$d×%2$d</string>
+    <string name="vnc_desconectado">Desconectado</string>
+    <string name="vnc_reintentar">Reintentar</string>
+    <string name="vnc_error_ip_vacia">Falta la IP de VNC en Ajustes</string>
+    <string name="vnc_error_conexion">No se pudo conectar al VNC (%1$s). Revisá Tailscale y que wayvnc esté corriendo.</string>
+    <string name="vnc_error_timeout">Tiempo de espera agotado. ¿wayvnc está activo en sierra-pc?</string>
+    <string name="vnc_error_protocolo">Error de protocolo VNC: %1$s</string>
+    <string name="vnc_error_no_soportado">No soportado: %1$s</string>
+    <string name="vnc_error_cerrado">El servidor cerró la conexión</string>
+    <string name="vnc_error_desconocido">Error: %1$s</string>
+
+    <string name="settings_vnc_title">VNC (pantalla en vivo)</string>
+    <string name="settings_vnc_ip_label">IP de sierra-pc (Tailscale)</string>
+    <string name="settings_vnc_port_label">Puerto VNC</string>
 </resources>
