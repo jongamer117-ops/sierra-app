@@ -5,17 +5,46 @@
     android:layout_height="match_parent"
     android:background="@color/sierra_bg"
     android:orientation="vertical"
-    android:padding="20dp"
     tools:context=".SettingsActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- Fijo arriba, fuera del ScrollView: siempre alcanzable aunque el
+         contenido de abajo sea mas largo que la pantalla o el teclado
+         este abierto (antes el boton de abajo quedaba inalcanzable). -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="@string/settings_title"
-        android:textColor="@color/sierra_text_primary"
-        android:textSize="22sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/settings_title"
+            android:textColor="@color/sierra_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/saveButtonTop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_save" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
 
     <TextView
         android:layout_width="wrap_content"
@@ -196,5 +225,8 @@
         android:gravity="center"
         android:textColor="@color/sierra_text_secondary"
         android:textSize="11sp" />
+
+    </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>

@@ -54,6 +54,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.chatTokenEditText.setText(prefs.chatToken)
 
         binding.saveButton.setOnClickListener { guardarYSalir() }
+        binding.saveButtonTop.setOnClickListener { guardarYSalir() }
         binding.actualizarButton.setOnClickListener { buscarActualizacion() }
 
         binding.versionTextView.text = getString(
