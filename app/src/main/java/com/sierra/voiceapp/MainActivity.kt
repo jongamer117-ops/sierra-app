@@ -113,15 +113,18 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.stepsEditText.setText("9")
         binding.cfgEditText.setText("1.0")
 
-        binding.resolucionSpinner.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item, resoluciones.map { it.first }
-        )
-        binding.samplerSpinner.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item, samplers
-        )
-        binding.schedulerSpinner.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item, schedulers
-        )
+        binding.resolucionSpinner.adapter = crearAdapterSpinner(resoluciones.map { it.first })
+        binding.samplerSpinner.adapter = crearAdapterSpinner(samplers)
+        binding.schedulerSpinner.adapter = crearAdapterSpinner(schedulers)
+    }
+
+    // El texto por default de simple_spinner_dropdown_item queda casi
+    // invisible sobre el fondo oscuro de la app (nunca tenia color propio) --
+    // layout custom con sierra_text_primary para el item cerrado y la lista.
+    private fun crearAdapterSpinner(items: List<String>): ArrayAdapter<String> {
+        return ArrayAdapter(this, R.layout.spinner_item, items).apply {
+            setDropDownViewResource(R.layout.spinner_item)
+        }
     }
 
     private fun generarImagen() {
