@@ -12,6 +12,10 @@
     <string name="btn_escuchando">Escuchando…</string>
     <string name="switch_leer_respuesta">Leer respuesta en voz alta</string>
     <string name="btn_ver_confirmaciones">Confirmaciones pendientes</string>
+    <string name="chip_backend_cortana">💬 Cortana (acciones reales)</string>
+    <string name="chip_backend_local">💬 Hermes local (solo charla)</string>
+    <string name="backend_cambiado_cortana">Cambiado a Cortana</string>
+    <string name="backend_cambiado_local">Cambiado a Hermes local</string>
 
     <string name="settings_ip_label">IP del servidor (Tailscale)</string>
     <string name="settings_port_label">Puerto</string>

@@ -62,6 +62,19 @@
             android:textColor="@color/sierra_text_secondary"
             android:textSize="12sp" />
 
+        <Button
+            android:id="@+id/backendChipButton"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_chip"
+            android:textColor="@color/sierra_text_primary"
+            android:textSize="12sp"
+            android:textAllCaps="false"
+            android:paddingHorizontal="14dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp" />
+
         <!-- RESPUESTA (protagonista) -->
         <TextView
             android:layout_width="match_parent"

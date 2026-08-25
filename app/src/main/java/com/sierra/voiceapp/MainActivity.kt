@@ -73,6 +73,35 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.confirmacionesButton.setOnClickListener {
             startActivity(Intent(this, ConfirmacionesActivity::class.java))
         }
+
+        actualizarChipBackend()
+        binding.backendChipButton.setOnClickListener { alternarBackend() }
+    }
+
+    private fun actualizarChipBackend() {
+        binding.backendChipButton.text = getString(
+            if (prefs.usarCortana) R.string.chip_backend_cortana else R.string.chip_backend_local
+        )
+    }
+
+    private fun alternarBackend() {
+        val usarCortana = !prefs.usarCortana
+        prefs.usarCortana = usarCortana
+        if (usarCortana) {
+            prefs.chatIp = SierraPrefs.CORTANA_CHAT_IP
+            prefs.chatPort = SierraPrefs.CORTANA_CHAT_PORT
+            prefs.chatToken = SierraPrefs.CORTANA_CHAT_TOKEN
+        } else {
+            prefs.chatIp = SierraPrefs.HERMES_LOCAL_CHAT_IP
+            prefs.chatPort = SierraPrefs.HERMES_LOCAL_CHAT_PORT
+            prefs.chatToken = SierraPrefs.HERMES_LOCAL_CHAT_TOKEN
+        }
+        actualizarChipBackend()
+        Toast.makeText(
+            this,
+            if (usarCortana) R.string.backend_cambiado_cortana else R.string.backend_cambiado_local,
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     override fun onResume() {
@@ -80,6 +109,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         // Re-evalua cada vez que se vuelve a esta pantalla, por si el token
         // recien se configuro en Ajustes o se activo/desactivo la vigilancia.
         iniciarVigilanciaSiCorresponde()
+        actualizarChipBackend()
     }
 
     private fun iniciarVigilanciaSiCorresponde() {
