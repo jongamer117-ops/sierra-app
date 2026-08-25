@@ -56,6 +56,10 @@ class SettingsActivity : AppCompatActivity() {
         binding.usarCortanaSwitch.isChecked = prefs.usarCortana
         binding.usarCortanaSwitch.setOnCheckedChangeListener { _, checked -> aplicarPresetDeChat(checked) }
 
+        // VNC
+        binding.vncIpEditText.setText(prefs.vncIp)
+        binding.vncPortEditText.setText(prefs.vncPort.toString())
+
         binding.saveButton.setOnClickListener { guardarYSalir() }
         binding.saveButtonTop.setOnClickListener { guardarYSalir() }
         binding.actualizarButton.setOnClickListener { buscarActualizacion() }
@@ -98,6 +102,10 @@ class SettingsActivity : AppCompatActivity() {
         prefs.chatPort = chatPort
         prefs.chatToken = binding.chatTokenEditText.text.toString().trim()
         prefs.usarCortana = binding.usarCortanaSwitch.isChecked
+
+        // VNC
+        prefs.vncIp = binding.vncIpEditText.text.toString().trim().ifEmpty { SierraPrefs.DEFAULT_VNC_IP }
+        prefs.vncPort = binding.vncPortEditText.text.toString().trim().toIntOrNull() ?: SierraPrefs.DEFAULT_VNC_PORT
 
         Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
         finish()

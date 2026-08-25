@@ -48,6 +48,12 @@
             android:exported="false"
             android:label="@string/confirmaciones_title" />
 
+        <activity
+            android:name=".VncViewerActivity"
+            android:exported="false"
+            android:label="@string/vnc_title"
+            android:screenOrientation="sensor" />
+
         <service
             android:name=".ConfirmacionesForegroundService"
             android:exported="false"
