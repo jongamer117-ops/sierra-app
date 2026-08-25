@@ -96,4 +96,10 @@
     <string name="settings_vnc_title">VNC (pantalla en vivo)</string>
     <string name="settings_vnc_ip_label">IP de sierra-pc (Tailscale)</string>
     <string name="settings_vnc_port_label">Puerto VNC</string>
+
+    <!-- INICIO -->
+    <string name="inicio_subtitle">Control remoto de sierra-pc</string>
+    <string name="inicio_ver_pantalla_desc">Vista en vivo de la pantalla, con toques para clickear</string>
+    <string name="btn_mandar_comandos">Mandar comandos</string>
+    <string name="inicio_mandar_comandos_desc">Voz, chat y generar imágenes</string>
 </resources>

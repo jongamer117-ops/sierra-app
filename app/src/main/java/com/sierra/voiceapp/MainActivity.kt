@@ -76,9 +76,6 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.confirmacionesButton.setOnClickListener {
             startActivity(Intent(this, ConfirmacionesActivity::class.java))
         }
-        binding.vncButton.setOnClickListener {
-            startActivity(Intent(this, VncViewerActivity::class.java))
-        }
 
         actualizarChipBackend()
         binding.backendChipButton.setOnClickListener { alternarBackend() }

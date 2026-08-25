@@ -29,14 +29,19 @@
         android:theme="@style/Theme.SierraVoice">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".InicioActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".SettingsActivity"
