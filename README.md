@@ -1,5 +1,7 @@
 # Sierra Voice App
 
+> Todo el desarrollo va directo a `main` (una sola rama, ver `CLAUDE.md`).
+
 App Android (Kotlin) que habla con **Sierra** en `sierra-pc` a través de la
 IP de Tailscale de la PC. Usa el `SpeechRecognizer` nativo de Android para
 voz → texto (sin librerías externas de STT), llama al endpoint `/comando`

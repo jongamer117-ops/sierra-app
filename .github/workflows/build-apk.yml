@@ -3,7 +3,7 @@ name: Build debug APK
 on:
   push:
     branches:
-      - claude/apk-download-x1b246
+      - main
   workflow_dispatch: {}
 
 permissions:
