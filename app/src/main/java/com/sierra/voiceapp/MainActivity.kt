@@ -9,6 +9,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -79,7 +80,41 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         actualizarChipBackend()
         binding.backendChipButton.setOnClickListener { alternarBackend() }
 
+        configurarSpinnersImagen()
         binding.generarImagenButton.setOnClickListener { generarImagen() }
+    }
+
+    // Mismas opciones que allowed_samplers/allowed_schedulers en catalog.py --
+    // si se agregan mas ahi, agregar aca tambien.
+    private val resoluciones = listOf(
+        Triple("Cuadrada (1024×1024)", 1024, 1024),
+        Triple("Retrato (768×1152)", 768, 1152),
+        Triple("Paisaje (1152×768)", 1152, 768),
+        Triple("Retrato compacto (832×1216)", 832, 1216),
+        Triple("Panorámica (1344×768)", 1344, 768),
+    )
+    private val samplers = listOf(
+        "euler", "euler_cfg_pp", "euler_ancestral", "euler_ancestral_cfg_pp",
+        "heun", "heunpp2", "dpm_2", "dpm_2_ancestral", "lms", "dpm_fast",
+        "dpm_adaptive", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_2m",
+        "dpmpp_2m_sde", "dpmpp_3m_sde", "ddpm", "lcm", "ipndm", "deis",
+        "res_multistep", "ddim", "uni_pc", "uni_pc_bh2"
+    )
+    private val schedulers = listOf(
+        "simple", "sgm_uniform", "karras", "exponential", "ddim_uniform",
+        "beta", "normal", "linear_quadratic", "kl_optimal"
+    )
+
+    private fun configurarSpinnersImagen() {
+        binding.resolucionSpinner.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, resoluciones.map { it.first }
+        )
+        binding.samplerSpinner.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, samplers
+        )
+        binding.schedulerSpinner.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, schedulers
+        )
     }
 
     private fun generarImagen() {
@@ -95,6 +130,22 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
         binding.respuestaTextView.text = getString(R.string.generando_imagen)
 
+        val (_, width, height) = resoluciones[binding.resolucionSpinner.selectedItemPosition]
+        val steps = binding.stepsEditText.text.toString().trim().toIntOrNull()
+        val cfg = binding.cfgEditText.text.toString().trim().toFloatOrNull()
+        val sampler = samplers[binding.samplerSpinner.selectedItemPosition]
+        val scheduler = schedulers[binding.schedulerSpinner.selectedItemPosition]
+
+        val params = mutableMapOf<String, Any>(
+            "prompt" to descripcion,
+            "width" to width,
+            "height" to height,
+            "sampler_name" to sampler,
+            "scheduler" to scheduler,
+        )
+        if (steps != null) params["steps"] = steps
+        if (cfg != null) params["cfg"] = cfg
+
         // generate_image es Nivel 1 (reclasificado 2026-08-25: rapido, local,
         // bajo riesgo -- a diferencia de generate_video, que sigue en Nivel 3
         // y sigue yendo por Cortana + confirmacion). Directo a Canal A, sin
@@ -102,7 +153,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         val client = CanalADirectClient(baseUrl = prefs.baseUrl(), token = prefs.token)
         client.crearTareaNivel1(
             action = "generate_image",
-            params = mapOf("prompt" to descripcion),
+            params = params,
             onSuccess = {
                 runOnUiThread {
                     binding.respuestaTextView.text = getString(R.string.imagen_generada)

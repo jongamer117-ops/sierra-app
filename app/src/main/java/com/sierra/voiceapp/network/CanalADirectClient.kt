@@ -33,7 +33,7 @@ class CanalADirectClient(
 
     fun crearTareaNivel1(
         action: String,
-        params: Map<String, String>,
+        params: Map<String, Any>,
         onSuccess: () -> Unit,
         onError: (CanalADirectError) -> Unit
     ) {
