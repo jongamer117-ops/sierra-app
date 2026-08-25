@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Holographic companion dark palette -->
     <color name="sierra_primary">#1565C0</color>
     <color name="sierra_primary_dark">#0D47A1</color>
-    <color name="sierra_accent">#00C853</color>
-    <color name="sierra_bg">#0E1116</color>
-    <color name="sierra_surface">#1A1F27</color>
-    <color name="sierra_text_primary">#F5F7FA</color>
-    <color name="sierra_text_secondary">#9AA5B1</color>
-    <color name="sierra_error">#E53935</color>
+    <color name="sierra_accent">#00E5FF</color>
+    <color name="sierra_accent_dim">#00B8D4</color>
+    <color name="sierra_bg">#0A0C10</color>
+    <color name="sierra_surface">#141820</color>
+    <color name="sierra_surface_border">#1E2A3A</color>
+    <color name="sierra_text_primary">#F0F4F8</color>
+    <color name="sierra_text_secondary">#8B9AAB</color>
+    <color name="sierra_error">#FF5252</color>
+    <color name="sierra_listening">#00E5FF</color>
+    <color name="sierra_glow">#1A00E5FF</color>
 </resources>
