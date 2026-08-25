@@ -14,12 +14,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sierra.voiceapp.databinding.ActivityMainBinding
-import com.sierra.voiceapp.network.CanalATaskError
-import com.sierra.voiceapp.network.CanalATasksClient
 import com.sierra.voiceapp.network.ComandoResponse
 import com.sierra.voiceapp.network.SierraApiClient
 import com.sierra.voiceapp.network.SierraApiError
-import java.text.Normalizer
 import java.util.Locale
 
 class MainActivity : AppCompatActivity(), RecognitionListener {
@@ -75,38 +72,6 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         }
         binding.confirmacionesButton.setOnClickListener {
             startActivity(Intent(this, ConfirmacionesActivity::class.java))
-        }
-
-        binding.verHoraButton.setOnClickListener {
-            ejecutarAccionDirecta("get_time", emptyMap(), resumen = getString(R.string.btn_ver_hora))
-        }
-        binding.abrirFirefoxButton.setOnClickListener {
-            ejecutarAccionDirecta(
-                "open_app", mapOf("app_name" to "firefox"),
-                resumen = getString(R.string.btn_abrir_firefox)
-            )
-        }
-        binding.buscarYoutubeButton.setOnClickListener {
-            val query = binding.busquedaEditText.text.toString().trim()
-            if (query.isEmpty()) {
-                Toast.makeText(this, R.string.error_texto_vacio, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            ejecutarAccionDirecta(
-                "search_youtube", mapOf("query" to query),
-                resumen = getString(R.string.acciones_resumen_busqueda, query)
-            )
-        }
-        binding.verArchivoButton.setOnClickListener {
-            val nombre = binding.archivoEditText.text.toString().trim()
-            if (nombre.isEmpty()) {
-                Toast.makeText(this, R.string.error_texto_vacio, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            ejecutarAccionDirecta(
-                "view_file", mapOf("path" to "$RUTA_DESCARGAS/$nombre"),
-                resumen = getString(R.string.acciones_resumen_archivo, nombre)
-            )
         }
     }
 
@@ -171,100 +136,12 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             getString(if (listening) R.string.btn_escuchando else R.string.btn_hablar)
     }
 
-    // --- Comando rapido (Nivel 1, sin IA) vs. chat conversacional (/comando) ---
+    // --- Chat conversacional (/comando) -- todo pasa por Cortana ---
 
     private fun procesarTextoReconocido(textoOriginal: String) {
         binding.transcripcionEditText.setText(textoOriginal)
-
-        val comando = interpretarComandoRapido(textoOriginal)
-        if (comando != null) {
-            ejecutarAccionDirecta(comando.action, comando.params, comando.resumen)
-        } else {
-            enviarTexto(textoOriginal)
-        }
+        enviarTexto(textoOriginal)
     }
-
-    private data class ComandoRapido(val action: String, val params: Map<String, String>, val resumen: String)
-
-    private fun interpretarComandoRapido(textoOriginal: String): ComandoRapido? {
-        val texto = quitarAcentos(textoOriginal.lowercase(Locale.getDefault()))
-
-        return when {
-            texto.contains("hora") ->
-                ComandoRapido("get_time", emptyMap(), getString(R.string.btn_ver_hora))
-
-            texto.contains("firefox") ->
-                ComandoRapido("open_app", mapOf("app_name" to "firefox"), getString(R.string.btn_abrir_firefox))
-
-            texto.contains("youtube") || texto.contains("busca") || texto.contains("buscar") -> {
-                val query = extraerConsultaBusqueda(texto)
-                if (query.isBlank()) null
-                else ComandoRapido(
-                    "search_youtube", mapOf("query" to query),
-                    getString(R.string.acciones_resumen_busqueda, query)
-                )
-            }
-
-            else -> null
-        }
-    }
-
-    private fun extraerConsultaBusqueda(texto: String): String {
-        var resultado = texto
-        listOf(
-            "busca en youtube", "buscá en youtube", "en youtube", "buscar", "busca",
-            "buscá", "youtube", "pon", "poné", "reproduce"
-        ).forEach { resultado = resultado.replace(it, "") }
-        return resultado.trim()
-    }
-
-    private fun quitarAcentos(texto: String): String {
-        val normalizado = Normalizer.normalize(texto, Normalizer.Form.NFD)
-        return normalizado.replace(Regex("\\p{Mn}"), "")
-    }
-
-    private fun ejecutarAccionDirecta(action: String, params: Map<String, String>, resumen: String) {
-        if (!prefs.hasToken()) {
-            Toast.makeText(this, R.string.error_falta_token, Toast.LENGTH_LONG).show()
-            return
-        }
-        binding.respuestaTextView.text = getString(R.string.acciones_enviando, resumen)
-
-        val level = if (action == "open_app") 2 else 1
-        if (level != 1) {
-            // Nivel 2 requiere confirmation_token local, que esta pantalla no
-            // emite -- por ahora solo se disparan acciones Nivel 1 directo.
-            binding.respuestaTextView.text = getString(R.string.acciones_no_entendido, resumen)
-            return
-        }
-
-        val client = CanalATasksClient(baseUrl = prefs.baseUrl(), token = prefs.token)
-        client.crearTarea(
-            action = action,
-            params = params,
-            level = level,
-            onSuccess = {
-                runOnUiThread {
-                    binding.respuestaTextView.text = getString(R.string.acciones_enviado, resumen)
-                    if (binding.leerSwitch.isChecked && ttsReady) {
-                        textToSpeech?.speak(resumen, TextToSpeech.QUEUE_FLUSH, null, "sierra_accion")
-                    }
-                }
-            },
-            onError = { error -> runOnUiThread { mostrarErrorTarea(error) } }
-        )
-    }
-
-    private fun mostrarErrorTarea(error: CanalATaskError) {
-        val mensaje = if (error.httpCode != null) {
-            getString(R.string.error_servidor, error.httpCode)
-        } else {
-            getString(R.string.error_conexion, error.message ?: "")
-        }
-        binding.respuestaTextView.text = mensaje
-    }
-
-    // --- Chat conversacional (/comando) ---
 
     private fun enviarTexto(texto: String) {
         val textoLimpio = texto.trim()
@@ -348,9 +225,5 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         speechRecognizer?.destroy()
         textToSpeech?.shutdown()
         super.onDestroy()
-    }
-
-    companion object {
-        private const val RUTA_DESCARGAS = "/home/jonathanf/Downloads"
     }
 }
