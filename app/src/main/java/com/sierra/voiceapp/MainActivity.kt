@@ -87,6 +87,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     // Mismas opciones que allowed_samplers/allowed_schedulers en catalog.py --
     // si se agregan mas ahi, agregar aca tambien.
     private val resoluciones = listOf(
+        Triple("Retrato alto (768×1344)", 768, 1344), // preferido de Jon, queda primero (default)
         Triple("Cuadrada (1024×1024)", 1024, 1024),
         Triple("Retrato (768×1152)", 768, 1152),
         Triple("Paisaje (1152×768)", 1152, 768),
@@ -106,6 +107,12 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     )
 
     private fun configurarSpinnersImagen() {
+        // Config guardada de Jon: retrato alto, 9 steps, cfg 1.0, euler --
+        // resolucion y sampler ya quedan primeros en sus listas (default de
+        // Spinner es posicion 0), esto precarga los campos de texto.
+        binding.stepsEditText.setText("9")
+        binding.cfgEditText.setText("1.0")
+
         binding.resolucionSpinner.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_dropdown_item, resoluciones.map { it.first }
         )
