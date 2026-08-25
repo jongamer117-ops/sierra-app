@@ -84,11 +84,13 @@ class SierraPrefs(context: Context) {
         const val DEFAULT_IP = "100.71.115.36"
         const val DEFAULT_PORT = 8200
 
-        // Puente /comando: Cortana, el decisor real (Claude Sonnet vía Hermes
-        // agent), en sierra-server. Puede pedir acciones reales del catalogo,
-        // no solo charlar -- ver hermes-pc/README.md y ESTADO-PROYECTO-SIERRA.md
-        // (repo docs) para el porque de este cambio de rumbo.
-        const val DEFAULT_CHAT_IP = "100.71.115.36"
-        const val DEFAULT_CHAT_PORT = 8301
+        // Puente /comando: TEMPORALMENTE apunta a Hermes local (glm-4.7-flash,
+        // sierra-pc, solo charla) en vez de a Cortana (sierra-server:8301) --
+        // la cuota de la API de Claude se agoto (limite hasta 2026-09-01), asi
+        // que Cortana no puede responder nada hasta esa fecha. Volver a
+        // 100.71.115.36:8301 cuando se restablezca. Ver ESTADO-PROYECTO-SIERRA.md
+        // (repo docs) para el detalle completo.
+        const val DEFAULT_CHAT_IP = "100.86.158.55"
+        const val DEFAULT_CHAT_PORT = 8300
     }
 }
