@@ -10,18 +10,17 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Cliente RFB mínimo (VNC) para ver la pantalla de sierra-pc.
  *
- * Solo soporta:
+ * Soporta:
  * - Protocolo 3.8
  * - Security type None (sin auth)
  * - Pixel format 32-bit little-endian RGB
  * - Encoding Raw
+ * - Pointer events (clicks / toques / drag)
  *
  * Diseñado para wayvnc sin TLS ni contraseña.
  */
@@ -56,6 +55,10 @@ class VncClient(
     private var fbHeight = 0
     private var bitmap: Bitmap? = null
 
+    /** Ancho y alto del framebuffer (válidos después de onConnected). */
+    val framebufferWidth: Int get() = fbWidth
+    val framebufferHeight: Int get() = fbHeight
+
     fun connect() {
         if (running.getAndSet(true)) return
 
@@ -87,6 +90,39 @@ class VncClient(
         try {
             socket?.close()
         } catch (_: Exception) {}
+    }
+
+    /**
+     * Envía un PointerEvent RFB.
+     *
+     * buttonMask:
+     *   bit 0 = left button
+     *   bit 1 = middle
+     *   bit 2 = right
+     *   bit 3 = wheel up
+     *   bit 4 = wheel down
+     *
+     * Coordenadas en el sistema del framebuffer (0..fbWidth-1, 0..fbHeight-1).
+     */
+    fun sendPointerEvent(x: Int, y: Int, buttonMask: Int) {
+        val out = output ?: return
+        if (!running.get()) return
+
+        // Clamp para no mandar coordenadas fuera del framebuffer
+        val cx = x.coerceIn(0, (fbWidth - 1).coerceAtLeast(0))
+        val cy = y.coerceIn(0, (fbHeight - 1).coerceAtLeast(0))
+
+        try {
+            synchronized(out) {
+                out.writeByte(5)          // PointerEvent
+                out.writeByte(buttonMask and 0xFF)
+                out.writeShort(cx)
+                out.writeShort(cy)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "No se pudo enviar pointer event", e)
+        }
     }
 
     private fun doConnect() {
@@ -237,13 +273,16 @@ class VncClient(
     }
 
     private fun requestFramebufferUpdate(incremental: Boolean) {
-        output!!.writeByte(3) // FramebufferUpdateRequest
-        output!!.writeByte(if (incremental) 1 else 0)
-        output!!.writeShort(0) // x
-        output!!.writeShort(0) // y
-        output!!.writeShort(fbWidth)
-        output!!.writeShort(fbHeight)
-        output!!.flush()
+        val out = output ?: return
+        synchronized(out) {
+            out.writeByte(3) // FramebufferUpdateRequest
+            out.writeByte(if (incremental) 1 else 0)
+            out.writeShort(0) // x
+            out.writeShort(0) // y
+            out.writeShort(fbWidth)
+            out.writeShort(fbHeight)
+            out.flush()
+        }
     }
 
     private fun handleFramebufferUpdate() {
@@ -265,15 +304,14 @@ class VncClient(
                     val bytes = ByteArray(pixelCount * 4)
                     input!!.readFully(bytes)
 
-                    // Convert BGRA or RGBA according to our pixel format (little-endian, R shift 16)
-                    // Our format: R at 16, G at 8, B at 0 → in little-endian memory: B G R A
+                    // Convert según nuestro pixel format (little-endian, R shift 16)
+                    // En memoria little-endian: B G R A
                     val pixels = IntArray(pixelCount)
                     var idx = 0
                     for (p in 0 until pixelCount) {
                         val b = bytes[idx].toInt() and 0xFF
                         val g = bytes[idx + 1].toInt() and 0xFF
                         val r = bytes[idx + 2].toInt() and 0xFF
-                        // alpha ignored, force opaque
                         pixels[p] = Color.rgb(r, g, b)
                         idx += 4
                     }
@@ -281,8 +319,6 @@ class VncClient(
                 }
                 else -> {
                     Log.w(TAG, "Encoding no soportado: $encoding (rect ${w}x${h})")
-                    // No podemos saltar de forma segura sin conocer el tamaño;
-                    // mejor abortar limpio.
                     throw VncError.Unsupported("Encoding $encoding no implementado aún")
                 }
             }
@@ -324,5 +360,8 @@ class VncClient(
 
     companion object {
         private const val TAG = "VncClient"
+
+        /** Máscara de botón izquierdo (tap / click). */
+        const val BUTTON_LEFT = 1
     }
 }

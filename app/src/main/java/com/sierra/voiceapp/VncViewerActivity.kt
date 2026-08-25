@@ -1,8 +1,12 @@
 package com.sierra.voiceapp
 
 import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.os.Bundle
+import android.view.MotionEvent
 import android.view.View
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.sierra.voiceapp.databinding.ActivityVncViewerBinding
@@ -10,7 +14,7 @@ import com.sierra.voiceapp.network.VncClient
 
 /**
  * Pantalla de vista en vivo de sierra-pc vía VNC (wayvnc).
- * Prioridad: que se vea la pantalla. Mouse/taps se pueden agregar después.
+ * Incluye soporte de toques/clicks mapeados al framebuffer remoto.
  */
 class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
 
@@ -18,6 +22,10 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
     private lateinit var prefs: SierraPrefs
     private var client: VncClient? = null
     private var currentBitmap: Bitmap? = null
+
+    // Tamaño del framebuffer (se actualiza en onConnected)
+    private var fbWidth = 0
+    private var fbHeight = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +36,9 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
 
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.retryButton.setOnClickListener { conectar() }
+
+        // Toques sobre la imagen → pointer events al VNC
+        binding.vncImageView.setOnTouchListener { _, event -> handleTouch(event) }
 
         conectar()
     }
@@ -54,8 +65,83 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
         client?.connect()
     }
 
+    /**
+     * Mapea un MotionEvent del ImageView (fitCenter) a coordenadas del framebuffer
+     * y envía el PointerEvent correspondiente.
+     */
+    private fun handleTouch(event: MotionEvent): Boolean {
+        val c = client ?: return false
+        if (fbWidth <= 0 || fbHeight <= 0) return false
+
+        val coords = mapTouchToFramebuffer(event.x, event.y) ?: return false
+        val (fbX, fbY) = coords
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                c.sendPointerEvent(fbX, fbY, VncClient.BUTTON_LEFT)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                // Drag con botón izquierdo presionado
+                c.sendPointerEvent(fbX, fbY, VncClient.BUTTON_LEFT)
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // Soltar botón
+                c.sendPointerEvent(fbX, fbY, 0)
+                return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * Convierte coordenadas de la vista (ImageView con scaleType=fitCenter)
+     * a coordenadas del framebuffer remoto.
+     *
+     * Devuelve null si el toque cayó fuera de la imagen (en las barras negras).
+     */
+    private fun mapTouchToFramebuffer(viewX: Float, viewY: Float): Pair<Int, Int>? {
+        val imageView = binding.vncImageView
+        val drawable = imageView.drawable ?: return null
+
+        val viewWidth = imageView.width.toFloat()
+        val viewHeight = imageView.height.toFloat()
+        if (viewWidth <= 0f || viewHeight <= 0f) return null
+
+        val imageWidth = drawable.intrinsicWidth.toFloat()
+        val imageHeight = drawable.intrinsicHeight.toFloat()
+        if (imageWidth <= 0f || imageHeight <= 0f) return null
+
+        // Escala que usa fitCenter
+        val scale = minOf(viewWidth / imageWidth, viewHeight / imageHeight)
+        val scaledWidth = imageWidth * scale
+        val scaledHeight = imageHeight * scale
+
+        // Offset por letterboxing (centrado)
+        val offsetX = (viewWidth - scaledWidth) / 2f
+        val offsetY = (viewHeight - scaledHeight) / 2f
+
+        // Coordenadas relativas a la imagen escalada
+        val imgX = viewX - offsetX
+        val imgY = viewY - offsetY
+
+        // Fuera de la imagen real → ignorar
+        if (imgX < 0f || imgY < 0f || imgX > scaledWidth || imgY > scaledHeight) {
+            return null
+        }
+
+        // Mapear a framebuffer
+        val fbX = ((imgX / scaledWidth) * fbWidth).toInt().coerceIn(0, fbWidth - 1)
+        val fbY = ((imgY / scaledHeight) * fbHeight).toInt().coerceIn(0, fbHeight - 1)
+
+        return fbX to fbY
+    }
+
     override fun onConnected(width: Int, height: Int) {
         runOnUiThread {
+            fbWidth = width
+            fbHeight = height
             binding.statusTextView.text = getString(R.string.vnc_conectado, width, height)
             binding.progressBar.visibility = View.GONE
             // Dejamos el status un momento y luego lo ocultamos para no tapar la imagen
