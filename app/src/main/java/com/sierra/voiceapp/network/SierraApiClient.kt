@@ -19,7 +19,8 @@ data class ComandoResponse(
 class SierraApiError(message: String, val httpCode: Int? = null) : Exception(message)
 
 /**
- * Cliente para el endpoint /comando de sierra-pc.
+ * Cliente para el endpoint /comando de Cortana (bridge en sierra-server,
+ * puerto separado de Canal A -- ver SierraPrefs.chatBaseUrl()).
  *
  * El contrato final del servidor todavía no está construido, así que el
  * parseo de la respuesta es deliberadamente tolerante: acepta varios
