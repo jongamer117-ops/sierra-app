@@ -37,7 +37,7 @@ class VncClient(
         fun onDisconnected()
     }
 
-    sealed class VncError(val message: String, val cause: Throwable? = null) {
+    sealed class VncError(message: String, cause: Throwable? = null) : Exception(message, cause) {
         class ConnectionFailed(msg: String, cause: Throwable? = null) : VncError(msg, cause)
         class Timeout(msg: String = "Tiempo de espera agotado") : VncError(msg)
         class ProtocolError(msg: String) : VncError(msg)
@@ -68,6 +68,7 @@ class VncClient(
             } catch (e: Exception) {
                 if (running.get()) {
                     val error = when (e) {
+                        is VncError -> e
                         is SocketTimeoutException -> VncError.Timeout()
                         is EOFException -> VncError.Closed()
                         is IOException -> VncError.ConnectionFailed(e.message ?: "Error de red", e)
