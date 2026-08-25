@@ -76,6 +76,16 @@ class SierraPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_VIGILANCIA, true)
         set(value) = prefs.edit().putBoolean(KEY_VIGILANCIA, value).apply()
 
+    // --- VNC (vista en vivo de sierra-pc) ---
+
+    var vncIp: String
+        get() = prefs.getString(KEY_VNC_IP, DEFAULT_VNC_IP) ?: DEFAULT_VNC_IP
+        set(value) = prefs.edit().putString(KEY_VNC_IP, value).apply()
+
+    var vncPort: Int
+        get() = prefs.getInt(KEY_VNC_PORT, DEFAULT_VNC_PORT)
+        set(value) = prefs.edit().putInt(KEY_VNC_PORT, value).apply()
+
     companion object {
         private const val PREFS_NAME = "sierra_prefs"
         private const val KEY_IP = "server_ip"
@@ -87,6 +97,8 @@ class SierraPrefs(context: Context) {
         private const val KEY_CHAT_PORT = "chat_server_port"
         private const val KEY_CHAT_TOKEN = "chat_server_token"
         private const val KEY_USAR_CORTANA = "chat_usar_cortana"
+        private const val KEY_VNC_IP = "vnc_ip"
+        private const val KEY_VNC_PORT = "vnc_port"
 
         // Canal A (FastAPI + SQLite en sierra-server), no sierra-pc directo.
         const val DEFAULT_IP = "100.71.115.36"
@@ -109,5 +121,9 @@ class SierraPrefs(context: Context) {
         const val HERMES_LOCAL_CHAT_IP = "100.86.158.55"
         const val HERMES_LOCAL_CHAT_PORT = 8300
         const val HERMES_LOCAL_CHAT_TOKEN = "e7b7191210abce26e67aab7ef356316f"
+
+        // wayvnc en sierra-pc (Tailscale), sin auth ni TLS.
+        const val DEFAULT_VNC_IP = "100.86.158.55"
+        const val DEFAULT_VNC_PORT = 5900
     }
 }

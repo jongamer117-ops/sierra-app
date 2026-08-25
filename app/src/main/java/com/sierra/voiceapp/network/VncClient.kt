@@ -1,0 +1,328 @@
+package com.sierra.voiceapp.network
+
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.util.Log
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.EOFException
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.net.SocketTimeoutException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * Cliente RFB mínimo (VNC) para ver la pantalla de sierra-pc.
+ *
+ * Solo soporta:
+ * - Protocolo 3.8
+ * - Security type None (sin auth)
+ * - Pixel format 32-bit little-endian RGB
+ * - Encoding Raw
+ *
+ * Diseñado para wayvnc sin TLS ni contraseña.
+ */
+class VncClient(
+    private val host: String,
+    private val port: Int,
+    private val listener: Listener
+) {
+
+    interface Listener {
+        fun onConnected(width: Int, height: Int)
+        fun onFrame(bitmap: Bitmap)
+        fun onError(error: VncError)
+        fun onDisconnected()
+    }
+
+    sealed class VncError(val message: String, val cause: Throwable? = null) {
+        class ConnectionFailed(msg: String, cause: Throwable? = null) : VncError(msg, cause)
+        class Timeout(msg: String = "Tiempo de espera agotado") : VncError(msg)
+        class ProtocolError(msg: String) : VncError(msg)
+        class Unsupported(msg: String) : VncError(msg)
+        class Closed(msg: String = "Conexión cerrada por el servidor") : VncError(msg)
+        class Unknown(msg: String, cause: Throwable? = null) : VncError(msg, cause)
+    }
+
+    private val running = AtomicBoolean(false)
+    private var socket: Socket? = null
+    private var input: DataInputStream? = null
+    private var output: DataOutputStream? = null
+
+    private var fbWidth = 0
+    private var fbHeight = 0
+    private var bitmap: Bitmap? = null
+
+    fun connect() {
+        if (running.getAndSet(true)) return
+
+        Thread({
+            try {
+                doConnect()
+            } catch (e: Exception) {
+                if (running.get()) {
+                    val error = when (e) {
+                        is SocketTimeoutException -> VncError.Timeout()
+                        is EOFException -> VncError.Closed()
+                        is IOException -> VncError.ConnectionFailed(e.message ?: "Error de red", e)
+                        else -> VncError.Unknown(e.message ?: "Error inesperado", e)
+                    }
+                    listener.onError(error)
+                }
+            } finally {
+                cleanup()
+                if (running.get()) {
+                    running.set(false)
+                    listener.onDisconnected()
+                }
+            }
+        }, "VncClient").start()
+    }
+
+    fun disconnect() {
+        running.set(false)
+        try {
+            socket?.close()
+        } catch (_: Exception) {}
+    }
+
+    private fun doConnect() {
+        val sock = Socket()
+        sock.soTimeout = 12_000 // timeout de lectura
+        sock.connect(InetSocketAddress(host, port), 8_000)
+        socket = sock
+        input = DataInputStream(sock.getInputStream())
+        output = DataOutputStream(sock.getOutputStream())
+
+        // 1. Protocol version
+        val versionBytes = ByteArray(12)
+        input!!.readFully(versionBytes)
+        val version = String(versionBytes, Charsets.US_ASCII).trim()
+        Log.d(TAG, "Server version: $version")
+
+        if (!version.startsWith("RFB 003.")) {
+            throw VncError.ProtocolError("Versión no soportada: $version")
+        }
+
+        // Respondemos 3.8
+        output!!.write("RFB 003.008\n".toByteArray(Charsets.US_ASCII))
+        output!!.flush()
+
+        // 2. Security types
+        val numTypes = input!!.readUnsignedByte()
+        if (numTypes == 0) {
+            // Failure
+            val reasonLen = input!!.readInt()
+            val reason = ByteArray(reasonLen)
+            input!!.readFully(reason)
+            throw VncError.ProtocolError("Servidor rechazó: ${String(reason)}")
+        }
+
+        val types = ByteArray(numTypes)
+        input!!.readFully(types)
+        Log.d(TAG, "Security types: ${types.joinToString()}")
+
+        // Preferimos None (1)
+        if (!types.contains(1.toByte())) {
+            throw VncError.Unsupported("El servidor no ofrece security type None (sin contraseña)")
+        }
+
+        output!!.writeByte(1) // None
+        output!!.flush()
+
+        // Security result (para 3.8)
+        val securityResult = input!!.readInt()
+        if (securityResult != 0) {
+            val reasonLen = input!!.readInt()
+            val reason = ByteArray(reasonLen)
+            input!!.readFully(reason)
+            throw VncError.ProtocolError("Security failed: ${String(reason)}")
+        }
+
+        // 3. ClientInit (shared = 1)
+        output!!.writeByte(1)
+        output!!.flush()
+
+        // 4. ServerInit
+        fbWidth = input!!.readUnsignedShort()
+        fbHeight = input!!.readUnsignedShort()
+        Log.d(TAG, "Framebuffer: ${fbWidth}x${fbHeight}")
+
+        // Pixel format (16 bytes) — lo ignoramos y forzamos el nuestro después
+        val pixelFormat = ByteArray(16)
+        input!!.readFully(pixelFormat)
+
+        val nameLen = input!!.readInt()
+        val nameBytes = ByteArray(nameLen)
+        input!!.readFully(nameBytes)
+        val desktopName = String(nameBytes, Charsets.UTF_8)
+        Log.d(TAG, "Desktop name: $desktopName")
+
+        // SetPixelFormat: 32-bit little-endian RGB
+        setPixelFormat()
+
+        // SetEncodings: solo Raw (0)
+        setEncodings(intArrayOf(0))
+
+        bitmap = Bitmap.createBitmap(fbWidth, fbHeight, Bitmap.Config.ARGB_8888)
+
+        listener.onConnected(fbWidth, fbHeight)
+
+        // Primer update completo
+        requestFramebufferUpdate(false)
+
+        // Loop de mensajes
+        while (running.get()) {
+            val msgType = try {
+                input!!.readUnsignedByte()
+            } catch (e: SocketTimeoutException) {
+                // Pedimos otro update si no hay nada
+                requestFramebufferUpdate(true)
+                continue
+            }
+
+            when (msgType) {
+                0 -> handleFramebufferUpdate() // FramebufferUpdate
+                2 -> handleBell()
+                3 -> handleServerCutText()
+                else -> {
+                    Log.w(TAG, "Mensaje desconocido: $msgType")
+                    // Intentamos no romper; algunos mensajes tienen longitud fija
+                }
+            }
+        }
+    }
+
+    private fun setPixelFormat() {
+        // Message type 0
+        output!!.writeByte(0)
+        output!!.writeByte(0) // padding
+        output!!.writeByte(0)
+        output!!.writeByte(0)
+
+        // bits-per-pixel, depth, big-endian, true-colour
+        output!!.writeByte(32)
+        output!!.writeByte(24)
+        output!!.writeByte(0) // little-endian
+        output!!.writeByte(1) // true colour
+
+        // max values
+        output!!.writeShort(255) // red-max
+        output!!.writeShort(255) // green-max
+        output!!.writeShort(255) // blue-max
+
+        // shifts
+        output!!.writeByte(16) // red-shift
+        output!!.writeByte(8)  // green-shift
+        output!!.writeByte(0)  // blue-shift
+
+        // padding
+        output!!.writeByte(0)
+        output!!.writeByte(0)
+        output!!.writeByte(0)
+        output!!.flush()
+    }
+
+    private fun setEncodings(encodings: IntArray) {
+        output!!.writeByte(2) // SetEncodings
+        output!!.writeByte(0) // padding
+        output!!.writeShort(encodings.size)
+        for (enc in encodings) {
+            output!!.writeInt(enc)
+        }
+        output!!.flush()
+    }
+
+    private fun requestFramebufferUpdate(incremental: Boolean) {
+        output!!.writeByte(3) // FramebufferUpdateRequest
+        output!!.writeByte(if (incremental) 1 else 0)
+        output!!.writeShort(0) // x
+        output!!.writeShort(0) // y
+        output!!.writeShort(fbWidth)
+        output!!.writeShort(fbHeight)
+        output!!.flush()
+    }
+
+    private fun handleFramebufferUpdate() {
+        input!!.readByte() // padding
+        val numRects = input!!.readUnsignedShort()
+
+        val bmp = bitmap ?: return
+
+        for (i in 0 until numRects) {
+            val x = input!!.readUnsignedShort()
+            val y = input!!.readUnsignedShort()
+            val w = input!!.readUnsignedShort()
+            val h = input!!.readUnsignedShort()
+            val encoding = input!!.readInt()
+
+            when (encoding) {
+                0 -> { // Raw
+                    val pixelCount = w * h
+                    val bytes = ByteArray(pixelCount * 4)
+                    input!!.readFully(bytes)
+
+                    // Convert BGRA or RGBA according to our pixel format (little-endian, R shift 16)
+                    // Our format: R at 16, G at 8, B at 0 → in little-endian memory: B G R A
+                    val pixels = IntArray(pixelCount)
+                    var idx = 0
+                    for (p in 0 until pixelCount) {
+                        val b = bytes[idx].toInt() and 0xFF
+                        val g = bytes[idx + 1].toInt() and 0xFF
+                        val r = bytes[idx + 2].toInt() and 0xFF
+                        // alpha ignored, force opaque
+                        pixels[p] = Color.rgb(r, g, b)
+                        idx += 4
+                    }
+                    bmp.setPixels(pixels, 0, w, x, y, w, h)
+                }
+                else -> {
+                    Log.w(TAG, "Encoding no soportado: $encoding (rect ${w}x${h})")
+                    // No podemos saltar de forma segura sin conocer el tamaño;
+                    // mejor abortar limpio.
+                    throw VncError.Unsupported("Encoding $encoding no implementado aún")
+                }
+            }
+        }
+
+        // Entregar copia para no compartir el bitmap mutable entre hilos
+        val copy = bmp.copy(Bitmap.Config.ARGB_8888, false)
+        listener.onFrame(copy)
+
+        // Pedimos el siguiente update incremental
+        if (running.get()) {
+            requestFramebufferUpdate(true)
+        }
+    }
+
+    private fun handleBell() {
+        // ignoramos
+    }
+
+    private fun handleServerCutText() {
+        input!!.readByte() // padding
+        input!!.readByte()
+        input!!.readByte()
+        val len = input!!.readInt()
+        if (len > 0 && len < 1_000_000) {
+            val data = ByteArray(len)
+            input!!.readFully(data)
+        }
+    }
+
+    private fun cleanup() {
+        try { input?.close() } catch (_: Exception) {}
+        try { output?.close() } catch (_: Exception) {}
+        try { socket?.close() } catch (_: Exception) {}
+        input = null
+        output = null
+        socket = null
+    }
+
+    companion object {
+        private const val TAG = "VncClient"
+    }
+}
