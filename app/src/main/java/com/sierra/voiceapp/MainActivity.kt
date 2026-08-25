@@ -277,7 +277,7 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.enviarButton.isEnabled = false
         binding.respuestaTextView.text = getString(R.string.enviando)
 
-        val client = SierraApiClient(baseUrl = prefs.baseUrl(), token = prefs.token)
+        val client = SierraApiClient(baseUrl = prefs.chatBaseUrl(), token = prefs.chatToken)
         client.enviarComando(
             texto = textoLimpio,
             onSuccess = { respuesta -> runOnUiThread { mostrarRespuesta(respuesta) } },

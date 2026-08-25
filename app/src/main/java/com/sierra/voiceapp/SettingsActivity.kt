@@ -49,6 +49,10 @@ class SettingsActivity : AppCompatActivity() {
         binding.tokenEditText.setText(prefs.token)
         binding.vigilanciaSwitch.isChecked = prefs.vigilanciaActiva
 
+        binding.chatIpEditText.setText(prefs.chatIp)
+        binding.chatPortEditText.setText(prefs.chatPort.toString())
+        binding.chatTokenEditText.setText(prefs.chatToken)
+
         binding.saveButton.setOnClickListener { guardarYSalir() }
         binding.actualizarButton.setOnClickListener { buscarActualizacion() }
 
@@ -71,6 +75,12 @@ class SettingsActivity : AppCompatActivity() {
         prefs.serverPort = port
         prefs.token = token
         prefs.vigilanciaActiva = binding.vigilanciaSwitch.isChecked
+
+        val chatIp = binding.chatIpEditText.text.toString().trim().ifEmpty { SierraPrefs.DEFAULT_CHAT_IP }
+        val chatPort = binding.chatPortEditText.text.toString().trim().toIntOrNull() ?: SierraPrefs.DEFAULT_CHAT_PORT
+        prefs.chatIp = chatIp
+        prefs.chatPort = chatPort
+        prefs.chatToken = binding.chatTokenEditText.text.toString().trim()
 
         Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
         finish()

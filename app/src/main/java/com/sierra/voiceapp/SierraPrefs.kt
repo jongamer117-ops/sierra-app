@@ -42,6 +42,22 @@ class SierraPrefs(context: Context) {
 
     fun baseUrl(): String = "http://$serverIp:$serverPort"
 
+    /** IP/puerto/token del puente de chat (Hermes local en sierra-pc, puerto
+     * distinto a Canal A — ver com.sierra.voiceapp.network.SierraApiClient). */
+    var chatIp: String
+        get() = prefs.getString(KEY_CHAT_IP, DEFAULT_CHAT_IP) ?: DEFAULT_CHAT_IP
+        set(value) = prefs.edit().putString(KEY_CHAT_IP, value).apply()
+
+    var chatPort: Int
+        get() = prefs.getInt(KEY_CHAT_PORT, DEFAULT_CHAT_PORT)
+        set(value) = prefs.edit().putInt(KEY_CHAT_PORT, value).apply()
+
+    var chatToken: String
+        get() = prefs.getString(KEY_CHAT_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_CHAT_TOKEN, value).apply()
+
+    fun chatBaseUrl(): String = "http://$chatIp:$chatPort"
+
     /** SHA del commit del APK instalado actualmente, para saber si hay uno más nuevo en apk-latest. */
     var lastInstalledCommitSha: String
         get() = prefs.getString(KEY_LAST_APK_SHA, "") ?: ""
@@ -60,9 +76,16 @@ class SierraPrefs(context: Context) {
         private const val KEY_TOKEN = "sierra_token_poco"
         private const val KEY_LAST_APK_SHA = "last_installed_apk_sha"
         private const val KEY_VIGILANCIA = "vigilancia_confirmaciones_activa"
+        private const val KEY_CHAT_IP = "chat_server_ip"
+        private const val KEY_CHAT_PORT = "chat_server_port"
+        private const val KEY_CHAT_TOKEN = "chat_server_token"
 
         // Canal A (FastAPI + SQLite en sierra-server), no sierra-pc directo.
         const val DEFAULT_IP = "100.71.115.36"
         const val DEFAULT_PORT = 8200
+
+        // Puente /comando: Hermes local (glm-4.7-flash, solo chat) en sierra-pc.
+        const val DEFAULT_CHAT_IP = "100.86.158.55"
+        const val DEFAULT_CHAT_PORT = 8300
     }
 }
