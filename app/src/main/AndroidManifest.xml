@@ -6,6 +6,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Para instalar el APK de actualización descargado desde apk-latest en GitHub. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Servicio en primer plano que vigila confirmaciones pendientes y
+         notifica -- ver ConfirmacionesForegroundService. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Declarado para que el sistema muestre el picker de reconocimiento de voz
          si el dispositivo lo requiere (no bloquea el uso de SpeechRecognizer). -->
@@ -42,6 +47,15 @@
             android:name=".ConfirmacionesActivity"
             android:exported="false"
             android:label="@string/confirmaciones_title" />
+
+        <service
+            android:name=".ConfirmacionesForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <receiver
+            android:name=".ConfirmacionActionReceiver"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

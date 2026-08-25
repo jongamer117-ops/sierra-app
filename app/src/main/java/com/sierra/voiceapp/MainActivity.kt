@@ -3,6 +3,7 @@ package com.sierra.voiceapp
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -38,6 +39,13 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             } else {
                 Toast.makeText(this, R.string.error_no_mic_permission, Toast.LENGTH_LONG).show()
             }
+        }
+
+    private val notifPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+            // Se pidio o no, arranca (o no) el servicio segun quedo el permiso --
+            // no hay nada mas que hacer con el resultado aqui.
+            iniciarVigilanciaSiCorresponde()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,6 +108,28 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
                 resumen = getString(R.string.acciones_resumen_archivo, nombre)
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-evalua cada vez que se vuelve a esta pantalla, por si el token
+        // recien se configuro en Ajustes o se activo/desactivo la vigilancia.
+        iniciarVigilanciaSiCorresponde()
+    }
+
+    private fun iniciarVigilanciaSiCorresponde() {
+        if (!prefs.hasToken() || !prefs.vigilanciaActiva) {
+            stopService(Intent(this, ConfirmacionesForegroundService::class.java))
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        ContextCompat.startForegroundService(this, Intent(this, ConfirmacionesForegroundService::class.java))
     }
 
     private fun onMicPressed() {

@@ -47,6 +47,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.ipEditText.setText(prefs.serverIp)
         binding.portEditText.setText(prefs.serverPort.toString())
         binding.tokenEditText.setText(prefs.token)
+        binding.vigilanciaSwitch.isChecked = prefs.vigilanciaActiva
 
         binding.saveButton.setOnClickListener { guardarYSalir() }
         binding.actualizarButton.setOnClickListener { buscarActualizacion() }
@@ -69,6 +70,7 @@ class SettingsActivity : AppCompatActivity() {
         prefs.serverIp = ip
         prefs.serverPort = port
         prefs.token = token
+        prefs.vigilanciaActiva = binding.vigilanciaSwitch.isChecked
 
         Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
         finish()

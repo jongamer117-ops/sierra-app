@@ -47,12 +47,19 @@ class SierraPrefs(context: Context) {
         get() = prefs.getString(KEY_LAST_APK_SHA, "") ?: ""
         set(value) = prefs.edit().putString(KEY_LAST_APK_SHA, value).apply()
 
+    /** Si el servicio en primer plano debe avisar con notificación cuando
+     * haya una confirmación de Nivel 3 pendiente. Activo por default. */
+    var vigilanciaActiva: Boolean
+        get() = prefs.getBoolean(KEY_VIGILANCIA, true)
+        set(value) = prefs.edit().putBoolean(KEY_VIGILANCIA, value).apply()
+
     companion object {
         private const val PREFS_NAME = "sierra_prefs"
         private const val KEY_IP = "server_ip"
         private const val KEY_PORT = "server_port"
         private const val KEY_TOKEN = "sierra_token_poco"
         private const val KEY_LAST_APK_SHA = "last_installed_apk_sha"
+        private const val KEY_VIGILANCIA = "vigilancia_confirmaciones_activa"
 
         // Canal A (FastAPI + SQLite en sierra-server), no sierra-pc directo.
         const val DEFAULT_IP = "100.71.115.36"

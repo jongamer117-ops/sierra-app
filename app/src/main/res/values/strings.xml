@@ -41,6 +41,13 @@
     <string name="settings_update_error">No se pudo actualizar: %1$s</string>
     <string name="settings_update_permiso_requerido">Habilitá \"Instalar apps desconocidas\" para Sierra — al volver, se instala sola</string>
     <string name="settings_version">Versión %1$s (build %2$d)</string>
+    <string name="settings_vigilancia_label">Avisar con notificación cuando haya algo que aprobar</string>
+
+    <string name="notif_canal_vigilancia">Sierra — vigilancia</string>
+    <string name="notif_canal_alertas">Sierra — confirmaciones</string>
+    <string name="notif_vigilando_titulo">Sierra está vigilando</string>
+    <string name="notif_vigilando_texto">Te avisará si hay una confirmación de Nivel 3 pendiente</string>
+    <string name="notif_confirmacion_titulo">Confirmación pendiente</string>
 
     <string name="confirmaciones_title">Confirmaciones pendientes</string>
     <string name="confirmaciones_subtitle">Acciones de Nivel 3 esperando tu aprobación — cada una es una decisión individual</string>
