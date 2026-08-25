@@ -42,7 +42,12 @@ class CanalATasksClient(
             put("params", paramsJson)
             put("permission_level", level)
             put("emitted_by", "sierra-app-directo")
-            put("origin", "app")
+            // "origin" es el host que debe ejecutar la tarea, no quien la emitio
+            // (eso ya lo dice emitted_by) -- el Executor de sierra-pc solo pide
+            // tareas con origin="pc" (ver executor.py: ORIGIN). Con origin="app"
+            // el Executor nunca las recogia: quedaban en pending para siempre,
+            // sin error visible. Bug real encontrado en produccion 2026-08-24.
+            put("origin", "pc")
         }.toString().toRequestBody(jsonMediaType)
 
         val request = Request.Builder()
