@@ -172,5 +172,55 @@
             android:src="@drawable/ic_mic"
             android:scaleType="center" />
 
+        <!-- DIVIDER -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="16dp"
+            android:background="@color/sierra_surface_border" />
+
+        <!-- GENERAR IMAGEN -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:text="@string/label_generar_imagen"
+            android:textColor="@color/sierra_accent"
+            android:textSize="12sp"
+            android:letterSpacing="0.04"
+            android:textAllCaps="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/hint_generar_imagen_nota"
+            android:textColor="@color/sierra_text_secondary"
+            android:textSize="11sp" />
+
+        <EditText
+            android:id="@+id/imagenPromptEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_field"
+            android:gravity="top|start"
+            android:hint="@string/hint_generar_imagen"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minLines="2"
+            android:maxLines="4"
+            android:padding="14dp"
+            android:textColor="@color/sierra_text_primary"
+            android:textColorHint="@color/sierra_text_secondary" />
+
+        <Button
+            android:id="@+id/generarImagenButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_chip"
+            android:text="@string/btn_generar_imagen"
+            android:textColor="@color/sierra_text_primary" />
+
     </LinearLayout>
 </ScrollView>

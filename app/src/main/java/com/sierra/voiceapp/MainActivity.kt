@@ -76,6 +76,20 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
         actualizarChipBackend()
         binding.backendChipButton.setOnClickListener { alternarBackend() }
+
+        binding.generarImagenButton.setOnClickListener { generarImagen() }
+    }
+
+    private fun generarImagen() {
+        val descripcion = binding.imagenPromptEditText.text.toString().trim()
+        if (descripcion.isEmpty()) {
+            Toast.makeText(this, R.string.error_prompt_imagen_vacio, Toast.LENGTH_SHORT).show()
+            return
+        }
+        // Sigue yendo por el chat -- generate_image es Nivel 3, solo Cortana
+        // lo puede pedir (nunca una accion directa sin decisor), y necesita
+        // tu confirmacion en la app igual que cualquier otra accion real.
+        enviarTexto("Generá una imagen con esta descripción: $descripcion")
     }
 
     private fun actualizarChipBackend() {
