@@ -1,7 +1,6 @@
 package com.sierra.voiceapp.network
 
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.util.Log
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -342,13 +341,16 @@ class VncClient(
 
                     // Convert según nuestro pixel format (little-endian, R shift 16)
                     // En memoria little-endian: B G R A
+                    // Color.rgb(r,g,b) es una llamada a funcion por pixel -- en un
+                    // rect de pantalla completa (4K = 8.3M pixeles) eso pesa. Mismo
+                    // resultado armando el Int a mano (0xFF shl 24 es el alpha fijo).
                     val pixels = IntArray(pixelCount)
                     var idx = 0
                     for (p in 0 until pixelCount) {
                         val b = bytes[idx].toInt() and 0xFF
                         val g = bytes[idx + 1].toInt() and 0xFF
                         val r = bytes[idx + 2].toInt() and 0xFF
-                        pixels[p] = Color.rgb(r, g, b)
+                        pixels[p] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
                         idx += 4
                     }
                     bmp.setPixels(pixels, 0, w, x, y, w, h)

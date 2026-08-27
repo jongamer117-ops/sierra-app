@@ -5,8 +5,8 @@ import android.graphics.Matrix
 import android.graphics.RectF
 import android.os.Bundle
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.sierra.voiceapp.databinding.ActivityVncViewerBinding
@@ -14,7 +14,11 @@ import com.sierra.voiceapp.network.VncClient
 
 /**
  * Pantalla de vista en vivo de sierra-pc vía VNC (wayvnc).
- * Incluye soporte de toques/clicks mapeados al framebuffer remoto.
+ *
+ * Zoom/pan tipo tablet: dos dedos mueven y escalan la vista local (pellizcar
+ * para acercar, arrastrar con dos dedos para paniar), nunca tocan el remoto.
+ * Un dedo sigue siendo click/drag sobre el framebuffer, mapeado a traves de
+ * la transformacion actual -- funciona igual esté zoomeado o no.
  */
 class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
 
@@ -27,6 +31,24 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
     private var fbWidth = 0
     private var fbHeight = 0
 
+    // Transformacion imagen -> vista. viewMatrix es la que se ve ahora;
+    // restMatrix es el "fit" original (equivalente al fitCenter de antes),
+    // sirve de piso: no se puede pellizcar mas alla de eso hacia afuera.
+    private val viewMatrix = Matrix()
+    private val restMatrix = Matrix()
+    private var restScale = 1f
+    private var matrixLista = false
+    private val zoomMaximo = 6f
+
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+    private var lastFocusX = 0f
+    private var lastFocusY = 0f
+
+    // Un segundo dedo abajo pasa el gesto a pan/zoom local -- deja de
+    // mandarse como click hasta soltar todos los dedos.
+    private var multitouch = false
+    private var clickEnCurso = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityVncViewerBinding.inflate(layoutInflater)
@@ -37,10 +59,97 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.retryButton.setOnClickListener { conectar() }
 
-        // Toques sobre la imagen → pointer events al VNC
+        scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                lastFocusX = detector.focusX
+                lastFocusY = detector.focusY
+                return true
+            }
+
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                // Sin fit calculado (antes del primer frame) restScale es 0 --
+                // no hay nada que pellizcar todavia.
+                if (!matrixLista) return true
+                val actual = escalaActual()
+                val objetivo = (actual * detector.scaleFactor).coerceIn(restScale, restScale * zoomMaximo)
+                val factorAplicable = objetivo / actual
+                if (factorAplicable != 1f) {
+                    viewMatrix.postScale(factorAplicable, factorAplicable, detector.focusX, detector.focusY)
+                }
+                // El foco tambien se mueve en un arrastre de dos dedos sin
+                // pellizcar -- este delta es lo que paniar la vista.
+                viewMatrix.postTranslate(detector.focusX - lastFocusX, detector.focusY - lastFocusY)
+                lastFocusX = detector.focusX
+                lastFocusY = detector.focusY
+                clampPan()
+                aplicarMatriz()
+                return true
+            }
+        })
+
+        // Toques sobre la imagen → pointer events al VNC (un dedo) o
+        // pan/zoom local (dos dedos).
         binding.vncImageView.setOnTouchListener { _, event -> handleTouch(event) }
 
         conectar()
+    }
+
+    private fun escalaActual(): Float {
+        val valores = FloatArray(9)
+        viewMatrix.getValues(valores)
+        return valores[Matrix.MSCALE_X]
+    }
+
+    private fun inicializarMatrizFit() {
+        if (matrixLista) return
+        val iv = binding.vncImageView
+        val vw = iv.width.toFloat()
+        val vh = iv.height.toFloat()
+        if (vw <= 0f || vh <= 0f || fbWidth <= 0 || fbHeight <= 0) return
+
+        val s = minOf(vw / fbWidth, vh / fbHeight)
+        val dx = (vw - fbWidth * s) / 2f
+        val dy = (vh - fbHeight * s) / 2f
+        restMatrix.reset()
+        restMatrix.setScale(s, s)
+        restMatrix.postTranslate(dx, dy)
+        restScale = s
+        viewMatrix.set(restMatrix)
+        matrixLista = true
+        aplicarMatriz()
+    }
+
+    /** Que la imagen nunca se pueda arrastrar completamente fuera de la vista. */
+    private fun clampPan() {
+        val iv = binding.vncImageView
+        val vw = iv.width.toFloat()
+        val vh = iv.height.toFloat()
+        if (vw <= 0f || vh <= 0f) return
+
+        val rect = RectF(0f, 0f, fbWidth.toFloat(), fbHeight.toFloat())
+        viewMatrix.mapRect(rect)
+
+        var dx = 0f
+        var dy = 0f
+        if (rect.width() <= vw) {
+            dx = (vw - rect.width()) / 2f - rect.left
+        } else if (rect.left > 0f) {
+            dx = -rect.left
+        } else if (rect.right < vw) {
+            dx = vw - rect.right
+        }
+        if (rect.height() <= vh) {
+            dy = (vh - rect.height()) / 2f - rect.top
+        } else if (rect.top > 0f) {
+            dy = -rect.top
+        } else if (rect.bottom < vh) {
+            dy = vh - rect.bottom
+        }
+        if (dx != 0f || dy != 0f) viewMatrix.postTranslate(dx, dy)
+    }
+
+    private fun aplicarMatriz() {
+        binding.vncImageView.imageMatrix = viewMatrix
     }
 
     private fun conectar() {
@@ -52,6 +161,9 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
         binding.progressBar.visibility = View.VISIBLE
         binding.retryButton.visibility = View.GONE
         binding.vncImageView.setImageBitmap(null)
+        // Cada conexion recalcula el "fit" -- el tamano de framebuffer podria
+        // cambiar (otro monitor, otra resolucion).
+        matrixLista = false
 
         val ip = prefs.vncIp.trim().ifEmpty { SierraPrefs.DEFAULT_VNC_IP }
         val port = prefs.vncPort
@@ -66,76 +178,70 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
     }
 
     /**
-     * Mapea un MotionEvent del ImageView (fitCenter) a coordenadas del framebuffer
-     * y envía el PointerEvent correspondiente.
+     * Un dedo = click/drag sobre el remoto. Dos dedos = pan/zoom local (lo
+     * maneja scaleGestureDetector arriba, via postScale/postTranslate sobre
+     * viewMatrix). Nunca se manda un pointer event mientras hay mas de un
+     * dedo en pantalla.
      */
     private fun handleTouch(event: MotionEvent): Boolean {
-        val c = client ?: return false
-        if (fbWidth <= 0 || fbHeight <= 0) return false
-
-        val coords = mapTouchToFramebuffer(event.x, event.y) ?: return false
-        val (fbX, fbY) = coords
+        scaleGestureDetector.onTouchEvent(event)
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                c.sendPointerEvent(fbX, fbY, VncClient.BUTTON_LEFT)
-                return true
+                multitouch = false
+                enviarClick(event, VncClient.BUTTON_LEFT)
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                // Aparece un segundo dedo: si habia un click en curso con el
+                // primero, soltamos el boton para no dejarlo pegado del lado
+                // del servidor mientras pasamos a pan/zoom.
+                if (!multitouch && clickEnCurso) enviarClick(event, 0)
+                multitouch = true
             }
             MotionEvent.ACTION_MOVE -> {
-                // Drag con botón izquierdo presionado
-                c.sendPointerEvent(fbX, fbY, VncClient.BUTTON_LEFT)
-                return true
+                if (!multitouch && event.pointerCount == 1) {
+                    enviarClick(event, VncClient.BUTTON_LEFT)
+                }
+                // multitouch: el pan/zoom ya lo aplico scaleGestureDetector.
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                // Soltar botón
-                c.sendPointerEvent(fbX, fbY, 0)
-                return true
+                if (!multitouch) enviarClick(event, 0)
+                multitouch = false
+                clickEnCurso = false
             }
         }
-        return false
+        return true
+    }
+
+    private fun enviarClick(event: MotionEvent, buttonMask: Int) {
+        val c = client ?: return
+        val coords = mapTouchToFramebuffer(event.x, event.y) ?: return
+        c.sendPointerEvent(coords.first, coords.second, buttonMask)
+        clickEnCurso = buttonMask != 0
     }
 
     /**
-     * Convierte coordenadas de la vista (ImageView con scaleType=fitCenter)
-     * a coordenadas del framebuffer remoto.
+     * Convierte coordenadas de la vista a coordenadas del framebuffer
+     * invirtiendo viewMatrix -- funciona igual esté zoomeado, paniado, o en
+     * el fit original, porque es literalmente la transformacion inversa de
+     * lo que se esta dibujando ahora.
      *
-     * Devuelve null si el toque cayó fuera de la imagen (en las barras negras).
+     * Devuelve null si el toque cayo fuera de la imagen.
      */
     private fun mapTouchToFramebuffer(viewX: Float, viewY: Float): Pair<Int, Int>? {
-        val imageView = binding.vncImageView
-        val drawable = imageView.drawable ?: return null
+        if (fbWidth <= 0 || fbHeight <= 0) return null
 
-        val viewWidth = imageView.width.toFloat()
-        val viewHeight = imageView.height.toFloat()
-        if (viewWidth <= 0f || viewHeight <= 0f) return null
+        val inversa = Matrix()
+        if (!viewMatrix.invert(inversa)) return null
 
-        val imageWidth = drawable.intrinsicWidth.toFloat()
-        val imageHeight = drawable.intrinsicHeight.toFloat()
-        if (imageWidth <= 0f || imageHeight <= 0f) return null
+        val pts = floatArrayOf(viewX, viewY)
+        inversa.mapPoints(pts)
+        val fbXf = pts[0]
+        val fbYf = pts[1]
 
-        // Escala que usa fitCenter
-        val scale = minOf(viewWidth / imageWidth, viewHeight / imageHeight)
-        val scaledWidth = imageWidth * scale
-        val scaledHeight = imageHeight * scale
+        if (fbXf < 0f || fbYf < 0f || fbXf >= fbWidth || fbYf >= fbHeight) return null
 
-        // Offset por letterboxing (centrado)
-        val offsetX = (viewWidth - scaledWidth) / 2f
-        val offsetY = (viewHeight - scaledHeight) / 2f
-
-        // Coordenadas relativas a la imagen escalada
-        val imgX = viewX - offsetX
-        val imgY = viewY - offsetY
-
-        // Fuera de la imagen real → ignorar
-        if (imgX < 0f || imgY < 0f || imgX > scaledWidth || imgY > scaledHeight) {
-            return null
-        }
-
-        // Mapear a framebuffer
-        val fbX = ((imgX / scaledWidth) * fbWidth).toInt().coerceIn(0, fbWidth - 1)
-        val fbY = ((imgY / scaledHeight) * fbHeight).toInt().coerceIn(0, fbHeight - 1)
-
-        return fbX to fbY
+        return fbXf.toInt().coerceIn(0, fbWidth - 1) to fbYf.toInt().coerceIn(0, fbHeight - 1)
     }
 
     override fun onConnected(width: Int, height: Int) {
@@ -157,7 +263,9 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
         runOnUiThread {
             currentBitmap?.recycle()
             currentBitmap = bitmap
+            inicializarMatrizFit() // no-op si ya estaba lista
             binding.vncImageView.setImageBitmap(bitmap)
+            aplicarMatriz()
             binding.progressBar.visibility = View.GONE
             if (binding.statusTextView.visibility == View.VISIBLE &&
                 binding.statusTextView.text.toString().startsWith("Conectado")
