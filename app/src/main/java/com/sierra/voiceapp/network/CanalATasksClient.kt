@@ -6,17 +6,20 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class CanalATaskError(message: String, val httpCode: Int? = null) : Exception(message)
 
-/**
- * Cliente para POST /tasks en Canal A. Usado por acciones Nivel 1
- * disparadas directo desde la app (boton o voz, sin decisor de IA en
- * el medio) -- emitted_by siempre "sierra-app-directo".
- */
+data class EstadoTarea(
+    val taskId: String,
+    val status: String,
+    val result: String?,
+    val resultDetail: String?
+)
+
 class CanalATasksClient(
     private val baseUrl: String,
     private val token: String
@@ -71,5 +74,68 @@ class CanalATasksClient(
                 }
             }
         })
+    }
+
+    fun consultarEstado(
+        taskId: String,
+        onResult: (EstadoTarea) -> Unit,
+        onError: (CanalATaskError) -> Unit
+    ) {
+        val request = Request.Builder()
+            .url("$baseUrl/tasks?limit=20")
+            .header("X-Sierra-Token", token)
+            .get()
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                onError(CanalATaskError(e.message ?: "Error de red"))
+            }
+
+            override fun onResponse(call: Call, response: okhttp3.Response) {
+                response.use {
+                    if (!it.isSuccessful) {
+                        onError(CanalATaskError("HTTP ${it.code}", it.code))
+                        return
+                    }
+                    try {
+                        val raw = it.body?.string().orEmpty()
+                        val encontrada = parseLista(raw).firstOrNull { t -> t.taskId == taskId }
+                        if (encontrada == null) {
+                            onError(CanalATaskError("task_id no está en las últimas 20"))
+                        } else {
+                            onResult(encontrada)
+                        }
+                    } catch (e: Exception) {
+                        onError(CanalATaskError("Respuesta inesperada del servidor: ${e.message}", it.code))
+                    }
+                }
+            }
+        })
+    }
+
+    private fun parseLista(raw: String): List<EstadoTarea> {
+        val array = when {
+            raw.isBlank() -> JSONArray()
+            raw.trim().startsWith("[") -> JSONArray(raw)
+            else -> {
+                val obj = JSONObject(raw)
+                when {
+                    obj.has("tasks") -> obj.getJSONArray("tasks")
+                    obj.has("items") -> obj.getJSONArray("items")
+                    obj.has("data") -> obj.getJSONArray("data")
+                    else -> JSONArray()
+                }
+            }
+        }
+        return (0 until array.length()).map { i ->
+            val o = array.getJSONObject(i)
+            EstadoTarea(
+                taskId = o.optString("task_id"),
+                status = o.optString("status"),
+                result = o.optString("result", null).takeIf { !it.isNullOrBlank() && it != "null" },
+                resultDetail = o.optString("result_detail", null).takeIf { !it.isNullOrBlank() && it != "null" }
+            )
+        }
     }
 }

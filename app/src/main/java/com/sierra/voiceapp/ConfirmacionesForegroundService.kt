@@ -16,21 +16,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.sierra.voiceapp.network.CanalAConfirmationsClient
 import com.sierra.voiceapp.network.ConfirmacionPendiente
+import java.time.Instant
 
-/**
- * Servicio en primer plano que vigila confirmaciones de Nivel 3 pendientes
- * en Canal A y las notifica con botones de Aprobar/Rechazar directo en la
- * notificación -- sin tener que abrir la app cada vez.
- *
- * El ícono fijo en la barra de notificaciones es requisito de Android para
- * servicios en primer plano; no se puede ocultar mientras el servicio está
- * activo (se puede desactivar entero desde Ajustes).
- *
- * Nunca aprueba/rechaza nada por sí solo -- solo avisa. La decisión sigue
- * siendo siempre humana (INVARIANTE #11 del canon de Sierra): esto no
- * mueve la aprobación a Telegram ni a ningún canal donde viva el decisor,
- * sigue siendo esta app, en este dispositivo, fuera de banda.
- */
 class ConfirmacionesForegroundService : Service() {
 
     private lateinit var prefs: SierraPrefs
@@ -47,6 +34,7 @@ class ConfirmacionesForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         prefs = SierraPrefs(this)
+        SierraPresence.inicializar(applicationContext)
         crearCanales()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(ONGOING_NOTIFICATION_ID, notificacionVigilando(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -73,8 +61,6 @@ class ConfirmacionesForegroundService : Service() {
         val client = CanalAConfirmationsClient(baseUrl = prefs.baseUrl(), token = prefs.token)
         client.fetchPending(
             onSuccess = { pendientes -> procesarPendientes(pendientes) },
-            // Fallo de red puntual: se reintenta solo en el siguiente poll,
-            // sin molestar con un toast (no hay UI visible aqui de todas formas).
             onError = { }
         )
     }
@@ -82,21 +68,30 @@ class ConfirmacionesForegroundService : Service() {
     private fun procesarPendientes(pendientes: List<ConfirmacionPendiente>) {
         val idsActuales = pendientes.map { it.confirmationId }.toSet()
         val manager = NotificationManagerCompat.from(this)
-
-        // Quita notificaciones de confirmaciones que ya no siguen pendientes
-        // (aprobadas/rechazadas/expiradas desde la pantalla o desde aqui mismo).
         (idsYaNotificados - idsActuales).forEach { id -> manager.cancel(notificationIdPara(id)) }
         idsYaNotificados.retainAll(idsActuales)
-
         pendientes.filter { it.confirmationId !in idsYaNotificados }.forEach { confirmacion ->
             idsYaNotificados.add(confirmacion.confirmationId)
             notificarConfirmacion(confirmacion)
+        }
+        val proxima = pendientes.minByOrNull { it.expiresAt }
+        SierraPresence.confirmacionesVivas(
+            cantidad = pendientes.size,
+            expiraEnSegundos = proxima?.let { segundosHasta(it.expiresAt) }
+        )
+    }
+
+    private fun segundosHasta(expiresAt: String): Long {
+        return try {
+            val exp = Instant.parse(expiresAt)
+            (exp.epochSecond - Instant.now().epochSecond).coerceAtLeast(0L)
+        } catch (_: Exception) {
+            0L
         }
     }
 
     private fun notificarConfirmacion(confirmacion: ConfirmacionPendiente) {
         val notificationId = notificationIdPara(confirmacion.confirmationId)
-
         val aprobarIntent = accionPendingIntent(confirmacion.confirmationId, notificationId, aprobar = true)
         val rechazarIntent = accionPendingIntent(confirmacion.confirmationId, notificationId, aprobar = false)
         val abrirAppIntent = PendingIntent.getActivity(
@@ -104,7 +99,6 @@ class ConfirmacionesForegroundService : Service() {
             Intent(this, ConfirmacionesActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val notification = NotificationCompat.Builder(this, CHANNEL_ALERTAS)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.notif_confirmacion_titulo))
@@ -116,7 +110,6 @@ class ConfirmacionesForegroundService : Service() {
             .addAction(0, getString(R.string.btn_aprobar), aprobarIntent)
             .addAction(0, getString(R.string.btn_rechazar), rechazarIntent)
             .build()
-
         NotificationManagerCompat.from(this).notify(notificationId, notification)
     }
 
@@ -127,9 +120,6 @@ class ConfirmacionesForegroundService : Service() {
             putExtra(ConfirmacionActionReceiver.EXTRA_APROBAR, aprobar)
             putExtra(ConfirmacionActionReceiver.EXTRA_NOTIFICATION_ID, notificationId)
         }
-        // requestCode distinto para aprobar vs rechazar del mismo
-        // confirmationId -- si no, PendingIntent los trata como el mismo
-        // intent y el segundo pisa al primero.
         val requestCode = notificationId * 2 + if (aprobar) 0 else 1
         return PendingIntent.getBroadcast(
             this, requestCode, intent,
