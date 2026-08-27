@@ -166,6 +166,11 @@ class VncViewerActivity : AppCompatActivity(), VncClient.Listener {
             } else {
                 binding.statusTextView.visibility = View.GONE
             }
+            // Recien ahora pedimos el proximo frame -- nunca mas de uno en
+            // vuelo. Sin esto la red inunda la cola del hilo principal con
+            // bitmaps de 4K sin consumir y la app se ahoga en vez de mostrar
+            // nada (ver VncClient.frameConsumed).
+            client?.frameConsumed()
         }
     }
 

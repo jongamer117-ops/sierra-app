@@ -329,7 +329,23 @@ class VncClient(
         val copy = bmp.copy(Bitmap.Config.ARGB_8888, false)
         listener.onFrame(copy)
 
-        // Pedimos el siguiente update incremental
+        // NO pedimos el siguiente update aca. wayvnc manda updates apenas hay
+        // cambios en pantalla -- con video o texto scrolleando eso es
+        // practicamente sin pausa. Si pidieramos el proximo de una, la UI
+        // (un frame de 4K crudo son ~31MB) se queda atras y la cola de
+        // Runnables de runOnUiThread se llena de bitmaps sin consumir: la
+        // memoria se dispara y la imagen nunca llega a pintarse (se ve
+        // "tarda en conectar" cuando en realidad ya conecto, esta ahogada).
+        // frameConsumed() es quien pide el siguiente, llamado por la UI
+        // recien despues de terminar de mostrar este.
+    }
+
+    /**
+     * La UI llama esto apenas termino de mostrar el frame que le mandamos por
+     * onFrame() -- recien ahi se pide el siguiente. Este pull-based pacing es
+     * lo que evita la inundacion: nunca hay mas de un frame en vuelo.
+     */
+    fun frameConsumed() {
         if (running.get()) {
             requestFramebufferUpdate(true)
         }
