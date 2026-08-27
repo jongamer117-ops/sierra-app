@@ -2,11 +2,9 @@
 <resources>
     <string name="app_name">Sierra</string>
     <string name="settings_title">Ajustes de conexión</string>
-    <string name="chat_subtitle">Hablále a Cortana — control remoto de Sierra. No es la pantalla de confirmaciones</string>
 
     <string name="hint_transcripcion">Lo que dijiste aparecerá aquí…</string>
     <string name="hint_respuesta">La respuesta de Sierra aparecerá aquí…</string>
-    <string name="label_respuesta">Respuesta</string>
     <string name="btn_hablar">Hablar</string>
     <string name="btn_enviar">Enviar</string>
     <string name="btn_escuchando">Escuchando…</string>
@@ -76,7 +74,6 @@
     <string name="error_servidor">Sierra respondió con un error (%1$d)</string>
     <string name="error_sin_match">Sierra no encontró ningún comando que coincida.</string>
     <string name="error_falta_token">Falta configurar el token en Ajustes</string>
-    <string name="enviando">Enviando a Sierra…</string>
 
     <!-- VNC -->
     <string name="vnc_title">Pantalla de sierra-pc</string>
@@ -102,4 +99,34 @@
     <string name="inicio_ver_pantalla_desc">Vista en vivo de la pantalla, con toques para clickear</string>
     <string name="btn_mandar_comandos">Mandar comandos</string>
     <string name="inicio_mandar_comandos_desc">Voz, chat y generar imágenes</string>
+
+    <!-- Capa de presencia -->
+    <string name="acciones_manuales_header">Acciones manuales</string>
+    <string name="acciones_no_entendido">No entendí qué acción hacer con: \"%1$s\"</string>
+    <string name="acciones_resumen_archivo">Abrir \"%1$s\"</string>
+    <string name="acciones_resumen_busqueda">Buscar \"%1$s\" en YouTube</string>
+    <string name="acuse_archivo">Abro \"%1$s\".</string>
+    <string name="acuse_ejecutado">Listo. Mirá el PC.</string>
+    <string name="acuse_encolado">Lo encolé.</string>
+    <string name="acuse_fallo">No salió. %1$s</string>
+    <string name="acuse_firefox">Firefox va.</string>
+    <string name="acuse_hora">Voy por la hora.</string>
+    <string name="acuse_youtube">Busco \"%1$s\" en YouTube.</string>
+    <string name="btn_abrir_firefox">Abrir Firefox</string>
+    <string name="btn_buscar_youtube">Buscar en YouTube</string>
+    <string name="btn_ver_archivo">Ver archivo</string>
+    <string name="btn_ver_hora">Ver la hora</string>
+    <string name="hint_buscar_youtube">qué buscar en YouTube</string>
+    <string name="hint_ver_archivo">nombre del archivo en Descargas</string>
+    <string name="presencia_corta_hermes">Estoy en Hermes. Puedo hablar. No puedo mover nada.</string>
+    <string name="presencia_corta_sin_pc">No llego al PC. Revisá Tailscale.</string>
+    <string name="presencia_corta_sin_token">Me falta el token. Está en Ajustes.</string>
+    <string name="presencia_corta_timeout">Tardé demasiado. No sé si llegó.</string>
+    <string name="presencia_en_cola">Lo mandé al PC.</string>
+    <string name="presencia_escuchando">Te oigo.</string>
+    <string name="presencia_esperando_si">Hay un sí esperando. %1$s</string>
+    <string name="presencia_lista">Hecho.</string>
+    <string name="presencia_pensando">Dame un segundo.</string>
+    <string name="presencia_quieta">Acá estoy.</string>
+    <string name="presencia_sigue_en_cola">Sigue en cola. El PC no reportó todavía.</string>
 </resources>

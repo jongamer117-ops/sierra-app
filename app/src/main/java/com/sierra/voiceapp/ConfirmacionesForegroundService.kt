@@ -16,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.sierra.voiceapp.network.CanalAConfirmationsClient
 import com.sierra.voiceapp.network.ConfirmacionPendiente
+import java.time.Instant
 
 /**
  * Servicio en primer plano que vigila confirmaciones de Nivel 3 pendientes
@@ -47,6 +48,7 @@ class ConfirmacionesForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         prefs = SierraPrefs(this)
+        SierraPresence.inicializar(applicationContext)
         crearCanales()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(ONGOING_NOTIFICATION_ID, notificacionVigilando(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -92,6 +94,21 @@ class ConfirmacionesForegroundService : Service() {
             idsYaNotificados.add(confirmacion.confirmationId)
             notificarConfirmacion(confirmacion)
         }
+
+        // El mismo pulso que ya late para notificar alimenta el estado de la
+        // home: el icono de confirmaciones estaba mudo hasta que lo tocabas.
+        // Esto solo avisa -- la decision sigue siendo humana y en su pantalla.
+        val proxima = pendientes.minByOrNull { it.expiresAt }
+        SierraPresence.confirmacionesVivas(
+            cantidad = pendientes.size,
+            expiraEnSegundos = proxima?.let { segundosHasta(it.expiresAt) }
+        )
+    }
+
+    private fun segundosHasta(expiresAt: String): Long = try {
+        (Instant.parse(expiresAt).epochSecond - Instant.now().epochSecond).coerceAtLeast(0L)
+    } catch (e: Exception) {
+        0L
     }
 
     private fun notificarConfirmacion(confirmacion: ConfirmacionPendiente) {

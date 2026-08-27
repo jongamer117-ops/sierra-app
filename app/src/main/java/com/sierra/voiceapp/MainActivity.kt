@@ -1,10 +1,15 @@
 package com.sierra.voiceapp
 
 import android.Manifest
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.PorterDuff
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -15,9 +20,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sierra.voiceapp.databinding.ActivityMainBinding
+import com.sierra.voiceapp.network.CanalAConfirmationsClient
 import com.sierra.voiceapp.network.CanalADirectClient
 import com.sierra.voiceapp.network.CanalADirectError
 import com.sierra.voiceapp.network.ComandoResponse
+import com.sierra.voiceapp.network.EstadoTarea
 import com.sierra.voiceapp.network.SierraApiClient
 import com.sierra.voiceapp.network.SierraApiError
 import java.util.Locale
@@ -31,6 +38,21 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     private var textToSpeech: TextToSpeech? = null
     private var ttsReady = false
     private var isListening = false
+
+    private lateinit var voz: VozSierra
+    private var pulso: ObjectAnimator? = null
+
+    private val poller = Handler(Looper.getMainLooper())
+
+    /** task_id de la tarea que la pantalla esta siguiendo ahora. Le da
+     * identidad al turno: un poll viejo que llega tarde no puede pisar el
+     * estado de una tarea nueva. */
+    private var tareaActiva: String? = null
+    private var pollsRestantes = 0
+
+    private var pollConfirmacionesActivo = false
+
+    private val listenerPresencia: (SierraPresence.Snapshot) -> Unit = { snap -> pintarEstado(snap) }
 
     private val micPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -82,6 +104,71 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
         configurarSpinnersImagen()
         binding.generarImagenButton.setOnClickListener { generarImagen() }
+        binding.imagenHeader.setOnClickListener { alternarSeccionImagen() }
+
+        voz = VozSierra(this)
+        SierraPresence.inicializar(this)
+    }
+
+    // --- Capa de presencia ---
+
+    private fun alternarSeccionImagen() {
+        val abierto = binding.imagenContenedor.visibility == android.view.View.VISIBLE
+        binding.imagenContenedor.visibility =
+            if (abierto) android.view.View.GONE else android.view.View.VISIBLE
+        binding.imagenChevron.text = if (abierto) "▸" else "▾"
+    }
+
+    private fun pintarEstado(snap: SierraPresence.Snapshot) {
+        binding.estadoTextView.text = snap.linea
+
+        val color = ContextCompat.getColor(
+            this,
+            when (snap.estado) {
+                EstadoSierra.QUIETA -> R.color.sierra_accent_dim
+                EstadoSierra.ESCUCHANDO -> R.color.sierra_listening
+                EstadoSierra.PENSANDO -> R.color.sierra_accent
+                EstadoSierra.EN_COLA -> R.color.sierra_primary
+                EstadoSierra.ESPERANDO_SI -> R.color.sierra_error
+                EstadoSierra.LISTA -> R.color.sierra_accent
+                EstadoSierra.CORTA -> R.color.sierra_text_secondary
+            }
+        )
+        binding.estadoAnillo.background?.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+
+        if (snap.confirmaciones > 0) {
+            binding.confirmacionesBadge.text = snap.confirmaciones.toString()
+            binding.confirmacionesBadge.visibility = android.view.View.VISIBLE
+        } else {
+            binding.confirmacionesBadge.visibility = android.view.View.GONE
+        }
+
+        if (snap.estado == EstadoSierra.PENSANDO) arrancarPulso() else pararPulso()
+    }
+
+    private fun arrancarPulso() {
+        if (pulso?.isRunning == true) return
+        pulso = ObjectAnimator.ofFloat(binding.estadoAnillo, "alpha", 1f, 0.25f).apply {
+            duration = 900
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            start()
+        }
+    }
+
+    /** Un pulso que sigue corriendo invisible come bateria para nada. */
+    private fun pararPulso() {
+        pulso?.cancel()
+        pulso = null
+        binding.estadoAnillo.alpha = 1f
+    }
+
+    private fun hablar(clip: String?, textoLibre: String? = null) {
+        if (!binding.leerSwitch.isChecked) return
+        when {
+            clip != null && voz.clipDisponible(clip) -> voz.decir(clip)
+            textoLibre != null -> voz.decirTextoLibre(textoLibre)
+        }
     }
 
     // Mismas opciones que allowed_samplers/allowed_schedulers en catalog.py --
@@ -134,11 +221,12 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             return
         }
         if (!prefs.hasToken()) {
-            Toast.makeText(this, R.string.error_falta_token, Toast.LENGTH_LONG).show()
+            SierraPresence.degradar(MotivoCorte.SIN_TOKEN)
+            hablar("voz_corta_sin_token")
             return
         }
 
-        binding.respuestaTextView.text = getString(R.string.generando_imagen)
+        SierraPresence.entrar(EstadoSierra.PENSANDO, linea = getString(R.string.generando_imagen))
 
         val (_, width, height) = resoluciones[binding.resolucionSpinner.selectedItemPosition]
         val steps = binding.stepsEditText.text.toString().trim().toIntOrNull()
@@ -164,26 +252,69 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         client.crearTareaNivel1(
             action = "generate_image",
             params = params,
-            onSuccess = {
-                runOnUiThread {
-                    binding.respuestaTextView.text = getString(R.string.imagen_generada)
-                    if (binding.leerSwitch.isChecked && ttsReady) {
-                        textToSpeech?.speak(
-                            getString(R.string.imagen_generada), TextToSpeech.QUEUE_FLUSH, null, "sierra_imagen"
-                        )
-                    }
-                }
-            },
+            // Canal A guardo la tarea: eso NO es que se ejecuto. Hasta que el
+            // Executor reporte, el estado honesto es "en cola".
+            onSuccess = { taskId -> runOnUiThread { empezarASeguir(taskId) } },
             onError = { error -> runOnUiThread { mostrarErrorImagen(error) } }
         )
     }
 
+    private fun empezarASeguir(taskId: String) {
+        tareaActiva = taskId
+        pollsRestantes = MAX_POLLS_TAREA
+        SierraPresence.entrar(EstadoSierra.EN_COLA, linea = getString(R.string.acuse_encolado))
+        hablar("voz_encolado")
+        poller.postDelayed({ sondearTarea(taskId) }, POLL_TAREA_MS)
+    }
+
+    private fun sondearTarea(taskId: String) {
+        // Turno viejo: la pantalla ya esta siguiendo otra tarea.
+        if (taskId != tareaActiva) return
+        if (pollsRestantes-- <= 0) {
+            tareaActiva = null
+            return  // el timeout de EN_COLA en SierraPresence dice lo suyo
+        }
+
+        val client = CanalADirectClient(baseUrl = prefs.baseUrl(), token = prefs.token)
+        client.consultarEstado(
+            taskId = taskId,
+            onResult = { estado -> runOnUiThread { aplicarEstadoTarea(taskId, estado) } },
+            onError = { runOnUiThread { reintentarSondeo(taskId) } }
+        )
+    }
+
+    private fun reintentarSondeo(taskId: String) {
+        if (taskId != tareaActiva) return
+        poller.postDelayed({ sondearTarea(taskId) }, POLL_TAREA_MS)
+    }
+
+    private fun aplicarEstadoTarea(taskId: String, estado: EstadoTarea) {
+        if (taskId != tareaActiva) return
+        if (estado.status != "done") {
+            poller.postDelayed({ sondearTarea(taskId) }, POLL_TAREA_MS)
+            return
+        }
+
+        tareaActiva = null
+        val ok = estado.result == "success"
+        val linea = if (ok) getString(R.string.acuse_ejecutado)
+        else getString(R.string.acuse_fallo, estado.resultDetail ?: "")
+
+        SierraPresence.entrar(EstadoSierra.LISTA, detalle = estado.resultDetail, linea = linea)
+        estado.resultDetail?.let { binding.respuestaTextView.text = it }
+        hablar(if (ok) "voz_ejecutado" else "voz_fallo", textoLibre = if (ok) null else linea)
+    }
+
     private fun mostrarErrorImagen(error: CanalADirectError) {
-        binding.respuestaTextView.text = if (error.httpCode != null) {
+        tareaActiva = null
+        val mensaje = if (error.httpCode != null) {
             getString(R.string.error_servidor, error.httpCode)
         } else {
             getString(R.string.error_conexion, error.message ?: "")
         }
+        binding.respuestaTextView.text = mensaje
+        SierraPresence.degradar(MotivoCorte.SIN_PC, detalle = mensaje)
+        hablar("voz_corta_sin_pc")
     }
 
     private fun actualizarChipBackend() {
@@ -218,6 +349,56 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         // recien se configuro en Ajustes o se activo/desactivo la vigilancia.
         iniciarVigilanciaSiCorresponde()
         actualizarChipBackend()
+
+        SierraPresence.observar(listenerPresencia)
+        if (!prefs.hasToken()) {
+            SierraPresence.degradar(MotivoCorte.SIN_TOKEN)
+        } else {
+            SierraPresence.limpiarCorte()
+        }
+        // El servicio apagado deja a la home sin fuente de confirmaciones:
+        // mientras esta pantalla este al frente, sondea ella.
+        if (!prefs.vigilanciaActiva && prefs.hasToken()) arrancarPollConfirmaciones()
+        // Una tarea puede haber quedado a medio seguir al irse a background.
+        tareaActiva?.let { id -> poller.postDelayed({ sondearTarea(id) }, POLL_TAREA_MS) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Nada de seguir pegandole a la red con la app en background.
+        poller.removeCallbacksAndMessages(null)
+        pollConfirmacionesActivo = false
+        SierraPresence.dejarDeObservar(listenerPresencia)
+        pararPulso()
+    }
+
+    private fun arrancarPollConfirmaciones() {
+        if (pollConfirmacionesActivo) return
+        pollConfirmacionesActivo = true
+        val tick = object : Runnable {
+            override fun run() {
+                if (!pollConfirmacionesActivo) return
+                CanalAConfirmationsClient(baseUrl = prefs.baseUrl(), token = prefs.token).fetchPending(
+                    onSuccess = { pendientes ->
+                        runOnUiThread {
+                            SierraPresence.confirmacionesVivas(
+                                pendientes.size,
+                                pendientes.minByOrNull { it.expiresAt }?.let { segundosHasta(it.expiresAt) }
+                            )
+                        }
+                    },
+                    onError = { }
+                )
+                poller.postDelayed(this, POLL_CONFIRMACIONES_MS)
+            }
+        }
+        poller.post(tick)
+    }
+
+    private fun segundosHasta(iso: String): Long? = try {
+        java.time.Duration.between(java.time.Instant.now(), java.time.Instant.parse(iso)).seconds
+    } catch (e: Exception) {
+        null
     }
 
     private fun iniciarVigilanciaSiCorresponde() {
@@ -272,6 +453,10 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.hablarButton.isActivated = listening
         binding.hablarButton.contentDescription =
             getString(if (listening) R.string.btn_escuchando else R.string.btn_hablar)
+        if (listening) {
+            SierraPresence.entrar(EstadoSierra.ESCUCHANDO)
+            hablar("voz_escuchando")
+        }
     }
 
     // --- Chat conversacional (/comando) -- todo pasa por Cortana ---
@@ -290,7 +475,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
         binding.progressBar.visibility = android.view.View.VISIBLE
         binding.enviarButton.isEnabled = false
-        binding.respuestaTextView.text = getString(R.string.enviando)
+        SierraPresence.entrar(EstadoSierra.PENSANDO)
+        hablar("voz_pensando")
 
         val client = SierraApiClient(baseUrl = prefs.chatBaseUrl(), token = prefs.chatToken)
         client.enviarComando(
@@ -309,9 +495,9 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
         binding.respuestaTextView.text = texto
 
-        if (binding.leerSwitch.isChecked && ttsReady) {
-            textToSpeech?.speak(respuesta.mensaje, TextToSpeech.QUEUE_FLUSH, null, "sierra_respuesta")
-        }
+        SierraPresence.entrar(EstadoSierra.LISTA)
+        // El chat es texto variable: no hay clip grabado, va por TTS.
+        hablar(clip = null, textoLibre = respuesta.mensaje)
     }
 
     private fun mostrarError(error: SierraApiError) {
@@ -324,6 +510,10 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
             getString(R.string.error_conexion, error.message ?: "")
         }
         binding.respuestaTextView.text = mensaje
+        // Con el chip en Hermes la capacidad es distinta, y se dice en voz alta.
+        val motivo = if (prefs.usarCortana) MotivoCorte.SIN_PC else MotivoCorte.HERMES
+        SierraPresence.degradar(motivo, detalle = mensaje)
+        hablar(if (motivo == MotivoCorte.HERMES) "voz_corta_hermes" else "voz_corta_sin_pc")
     }
 
     // --- RecognitionListener ---
@@ -360,8 +550,19 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
     override fun onEvent(eventType: Int, params: Bundle?) = Unit
 
     override fun onDestroy() {
+        poller.removeCallbacksAndMessages(null)
+        SierraPresence.dejarDeObservar(listenerPresencia)
+        pararPulso()
+        voz.liberar()
         speechRecognizer?.destroy()
         textToSpeech?.shutdown()
         super.onDestroy()
+    }
+
+    companion object {
+        private const val POLL_TAREA_MS = 3_000L
+        private const val POLL_CONFIRMACIONES_MS = 4_000L
+        /** 3s x 40 = 120s, el mismo techo que el timeout de EN_COLA. */
+        private const val MAX_POLLS_TAREA = 40
     }
 }

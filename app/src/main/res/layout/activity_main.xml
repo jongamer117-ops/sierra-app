@@ -33,15 +33,33 @@
                 android:textStyle="bold"
                 android:letterSpacing="0.02" />
 
-            <ImageButton
-                android:id="@+id/confirmacionesButton"
+            <FrameLayout
                 android:layout_width="42dp"
                 android:layout_height="42dp"
-                android:layout_marginEnd="6dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/btn_ver_confirmaciones"
-                android:src="@drawable/ic_confirmaciones"
-                android:padding="8dp" />
+                android:layout_marginEnd="6dp">
+
+                <ImageButton
+                    android:id="@+id/confirmacionesButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/btn_ver_confirmaciones"
+                    android:src="@drawable/ic_confirmaciones"
+                    android:padding="8dp" />
+
+                <TextView
+                    android:id="@+id/confirmacionesBadge"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="top|end"
+                    android:background="@drawable/bg_badge"
+                    android:gravity="center"
+                    android:textColor="@color/sierra_text_primary"
+                    android:textSize="9sp"
+                    android:visibility="gone"
+                    tools:text="1"
+                    tools:visibility="visible" />
+            </FrameLayout>
 
             <ImageButton
                 android:id="@+id/settingsButton"
@@ -53,14 +71,32 @@
                 android:padding="8dp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/subtitleText"
+        <!-- ESTADO (protagonista): anillo + una linea de Sierra, no un manual
+             de uso. Reemplaza al subtitulo que explicaba la app. -->
+        <LinearLayout
+            android:id="@+id/estadoRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="@string/chat_subtitle"
-            android:textColor="@color/sierra_text_secondary"
-            android:textSize="12sp" />
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/estadoAnillo"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/bg_estado_anillo" />
+
+            <TextView
+                android:id="@+id/estadoTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:text="@string/presencia_quieta"
+                android:textColor="@color/sierra_text_primary"
+                android:textSize="15sp" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/backendChipButton"
@@ -75,22 +111,11 @@
             android:minWidth="0dp"
             android:minHeight="0dp" />
 
-        <!-- RESPUESTA (protagonista) -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="@string/label_respuesta"
-            android:textColor="@color/sierra_accent"
-            android:textSize="12sp"
-            android:letterSpacing="0.04"
-            android:textAllCaps="true" />
-
         <TextView
             android:id="@+id/respuestaTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="16dp"
             android:background="@drawable/bg_field"
             android:minHeight="110dp"
             android:padding="18dp"
@@ -180,16 +205,43 @@
             android:layout_marginBottom="16dp"
             android:background="@color/sierra_surface_border" />
 
-        <!-- GENERAR IMAGEN -->
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- GENERAR IMAGEN: colapsado por defecto. Cada control a la vista
+             grita "menu"; la presencia vive arriba, esto vive atras. -->
+        <LinearLayout
+            android:id="@+id/imagenHeader"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:text="@string/label_generar_imagen"
-            android:textColor="@color/sierra_accent"
-            android:textSize="12sp"
-            android:letterSpacing="0.04"
-            android:textAllCaps="true" />
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingVertical="8dp">
+
+            <TextView
+                android:id="@+id/imagenHeaderText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/label_generar_imagen"
+                android:textColor="@color/sierra_accent"
+                android:textSize="12sp"
+                android:letterSpacing="0.04"
+                android:textAllCaps="true" />
+
+            <TextView
+                android:id="@+id/imagenChevron"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▸"
+                android:textColor="@color/sierra_text_secondary"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/imagenContenedor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
 
         <TextView
             android:layout_width="match_parent"
@@ -329,6 +381,8 @@
             android:background="@drawable/bg_chip"
             android:text="@string/btn_generar_imagen"
             android:textColor="@color/sierra_text_primary" />
+
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>
