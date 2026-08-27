@@ -44,11 +44,18 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
 
     private val poller = Handler(Looper.getMainLooper())
 
-    /** task_id de la tarea que la pantalla esta siguiendo ahora. Le da
-     * identidad al turno: un poll viejo que llega tarde no puede pisar el
-     * estado de una tarea nueva. */
-    private var tareaActiva: String? = null
-    private var pollsRestantes = 0
+    /** ids del lote de imagen que la pantalla esta siguiendo ahora (1 si es
+     * una sola, hasta 4 si son variaciones). Le da identidad al lote: un
+     * poll de un lote viejo no puede pisar el estado del actual. Se achica
+     * a medida que cada tarea reporta done. */
+    private var loteActivo: MutableSet<String> = mutableSetOf()
+    private var loteTotal = 0
+    private var loteListasCount = 0
+    private var loteErrorCount = 0
+    private var ultimoDetalleTarea: String? = null
+    private var pollsRestantesLote = 0
+
+    private var variacionesSeleccionadas = 1
 
     private var pollConfirmacionesActivo = false
 
@@ -105,6 +112,10 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         configurarSpinnersImagen()
         binding.generarImagenButton.setOnClickListener { generarImagen() }
         binding.imagenHeader.setOnClickListener { alternarSeccionImagen() }
+        binding.borrarPromptButton.setOnClickListener { binding.imagenPromptEditText.setText("") }
+        binding.variaciones1Button.setOnClickListener { seleccionarVariaciones(1) }
+        binding.variaciones2Button.setOnClickListener { seleccionarVariaciones(2) }
+        binding.variaciones4Button.setOnClickListener { seleccionarVariaciones(4) }
 
         voz = VozSierra(this)
         SierraPresence.inicializar(this)
@@ -214,6 +225,19 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         }
     }
 
+    private fun seleccionarVariaciones(cantidad: Int) {
+        variacionesSeleccionadas = cantidad
+        binding.variaciones1Button.setBackgroundResource(
+            if (cantidad == 1) R.drawable.bg_chip_seleccionado else R.drawable.bg_chip
+        )
+        binding.variaciones2Button.setBackgroundResource(
+            if (cantidad == 2) R.drawable.bg_chip_seleccionado else R.drawable.bg_chip
+        )
+        binding.variaciones4Button.setBackgroundResource(
+            if (cantidad == 4) R.drawable.bg_chip_seleccionado else R.drawable.bg_chip
+        )
+    }
+
     private fun generarImagen() {
         val descripcion = binding.imagenPromptEditText.text.toString().trim()
         if (descripcion.isEmpty()) {
@@ -248,65 +272,140 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         // bajo riesgo -- a diferencia de generate_video, que sigue en Nivel 3
         // y sigue yendo por Cortana + confirmacion). Directo a Canal A, sin
         // IA en el medio.
+        //
+        // El Executor asigna una seed al azar en cada tarea (executor.py:163,
+        // secrets.randbelow) -- mandar el mismo prompt N veces ya produce N
+        // resultados distintos solos, no hace falta armar una seed aca.
+        val cantidad = variacionesSeleccionadas
         val client = CanalADirectClient(baseUrl = prefs.baseUrl(), token = prefs.token)
-        client.crearTareaNivel1(
-            action = "generate_image",
-            params = params,
-            // Canal A guardo la tarea: eso NO es que se ejecuto. Hasta que el
-            // Executor reporte, el estado honesto es "en cola".
-            onSuccess = { taskId -> runOnUiThread { empezarASeguir(taskId) } },
-            onError = { error -> runOnUiThread { mostrarErrorImagen(error) } }
-        )
+        val idsCreados = mutableListOf<String>()
+        var respuestasRecibidas = 0
+        var ultimoErrorCreacion: CanalADirectError? = null
+
+        repeat(cantidad) {
+            client.crearTareaNivel1(
+                action = "generate_image",
+                params = params,
+                // Canal A guardo la tarea: eso NO es que se ejecuto. Hasta
+                // que el Executor reporte, el estado honesto es "en cola".
+                onSuccess = { taskId ->
+                    runOnUiThread {
+                        idsCreados.add(taskId)
+                        respuestasRecibidas++
+                        if (respuestasRecibidas == cantidad) resolverCreacionLote(idsCreados, cantidad, ultimoErrorCreacion)
+                    }
+                },
+                onError = { error ->
+                    runOnUiThread {
+                        ultimoErrorCreacion = error
+                        respuestasRecibidas++
+                        if (respuestasRecibidas == cantidad) resolverCreacionLote(idsCreados, cantidad, ultimoErrorCreacion)
+                    }
+                }
+            )
+        }
     }
 
-    private fun empezarASeguir(taskId: String) {
-        tareaActiva = taskId
-        pollsRestantes = MAX_POLLS_TAREA
-        SierraPresence.entrar(EstadoSierra.EN_COLA, linea = getString(R.string.acuse_encolado))
-        hablar("voz_encolado")
-        poller.postDelayed({ sondearTarea(taskId) }, POLL_TAREA_MS)
+    private fun resolverCreacionLote(idsCreados: List<String>, cantidad: Int, ultimoError: CanalADirectError?) {
+        if (idsCreados.isNotEmpty()) {
+            empezarASeguirLote(idsCreados.toSet(), cantidad)
+        } else {
+            mostrarErrorImagen(ultimoError ?: CanalADirectError("No se pudo encolar ninguna imagen"))
+        }
     }
 
-    private fun sondearTarea(taskId: String) {
-        // Turno viejo: la pantalla ya esta siguiendo otra tarea.
-        if (taskId != tareaActiva) return
-        if (pollsRestantes-- <= 0) {
-            tareaActiva = null
+    private fun empezarASeguirLote(taskIds: Set<String>, total: Int) {
+        loteActivo = taskIds.toMutableSet()
+        loteTotal = total
+        loteListasCount = 0
+        // Las que ni se pudieron crear (POST /tasks fallo) ya cuentan como
+        // error antes de arrancar a sondear.
+        loteErrorCount = total - taskIds.size
+        ultimoDetalleTarea = null
+        pollsRestantesLote = MAX_POLLS_TAREA
+
+        if (total == 1) {
+            SierraPresence.entrar(EstadoSierra.EN_COLA, linea = getString(R.string.acuse_encolado))
+            hablar("voz_encolado")
+        } else {
+            val linea = getString(R.string.acuse_lote_encolado, total)
+            SierraPresence.entrar(EstadoSierra.EN_COLA, linea = linea)
+            hablar(clip = null, textoLibre = linea)
+        }
+
+        if (loteActivo.isEmpty()) {
+            finalizarLote()
+        } else {
+            poller.postDelayed({ sondearLote() }, POLL_TAREA_MS)
+        }
+    }
+
+    private fun sondearLote() {
+        if (loteActivo.isEmpty()) return
+        if (pollsRestantesLote-- <= 0) {
+            loteActivo = mutableSetOf()
             return  // el timeout de EN_COLA en SierraPresence dice lo suyo
         }
 
+        val idsDeEsteTurno = loteActivo.toSet()
         val client = CanalADirectClient(baseUrl = prefs.baseUrl(), token = prefs.token)
-        client.consultarEstado(
-            taskId = taskId,
-            onResult = { estado -> runOnUiThread { aplicarEstadoTarea(taskId, estado) } },
-            onError = { runOnUiThread { reintentarSondeo(taskId) } }
+        client.consultarEstados(
+            taskIds = idsDeEsteTurno,
+            onResult = { encontradas -> runOnUiThread { procesarLote(idsDeEsteTurno, encontradas) } },
+            onError = { runOnUiThread { reintentarSondeoLote(idsDeEsteTurno) } }
         )
     }
 
-    private fun reintentarSondeo(taskId: String) {
-        if (taskId != tareaActiva) return
-        poller.postDelayed({ sondearTarea(taskId) }, POLL_TAREA_MS)
+    private fun reintentarSondeoLote(idsDeEsteTurno: Set<String>) {
+        // Turno viejo: ya se disparo otro lote mientras esta consulta viajaba.
+        if (idsDeEsteTurno != loteActivo) return
+        poller.postDelayed({ sondearLote() }, POLL_TAREA_MS)
     }
 
-    private fun aplicarEstadoTarea(taskId: String, estado: EstadoTarea) {
-        if (taskId != tareaActiva) return
-        if (estado.status != "done") {
-            poller.postDelayed({ sondearTarea(taskId) }, POLL_TAREA_MS)
+    private fun procesarLote(idsDeEsteTurno: Set<String>, encontradas: Map<String, EstadoTarea>) {
+        if (idsDeEsteTurno != loteActivo) return
+
+        for (id in idsDeEsteTurno) {
+            val estado = encontradas[id] ?: continue  // no aparecio todavia, se reintenta
+            if (estado.status != "done") continue
+            loteActivo.remove(id)
+            if (estado.result == "success") loteListasCount++ else loteErrorCount++
+            ultimoDetalleTarea = estado.resultDetail
+        }
+
+        if (loteActivo.isEmpty()) {
+            finalizarLote()
+        } else {
+            poller.postDelayed({ sondearLote() }, POLL_TAREA_MS)
+        }
+    }
+
+    private fun finalizarLote() {
+        val total = loteTotal
+        val listas = loteListasCount
+        val errores = loteErrorCount
+        val detalle = ultimoDetalleTarea
+        loteActivo = mutableSetOf()
+
+        if (total == 1) {
+            val ok = errores == 0 && listas == 1
+            val linea = if (ok) getString(R.string.acuse_ejecutado)
+            else getString(R.string.acuse_fallo, detalle ?: "")
+
+            SierraPresence.entrar(EstadoSierra.LISTA, detalle = detalle, linea = linea)
+            detalle?.let { binding.respuestaTextView.text = it }
+            hablar(if (ok) "voz_ejecutado" else "voz_fallo", textoLibre = if (ok) null else linea)
             return
         }
 
-        tareaActiva = null
-        val ok = estado.result == "success"
-        val linea = if (ok) getString(R.string.acuse_ejecutado)
-        else getString(R.string.acuse_fallo, estado.resultDetail ?: "")
-
-        SierraPresence.entrar(EstadoSierra.LISTA, detalle = estado.resultDetail, linea = linea)
-        estado.resultDetail?.let { binding.respuestaTextView.text = it }
-        hablar(if (ok) "voz_ejecutado" else "voz_fallo", textoLibre = if (ok) null else linea)
+        val linea = if (errores == 0) getString(R.string.acuse_lote_listo, listas)
+        else getString(R.string.acuse_lote_parcial, listas, total, errores)
+        SierraPresence.entrar(EstadoSierra.LISTA, linea = linea)
+        hablar(clip = null, textoLibre = linea)
     }
 
     private fun mostrarErrorImagen(error: CanalADirectError) {
-        tareaActiva = null
+        loteActivo = mutableSetOf()
         val mensaje = if (error.httpCode != null) {
             getString(R.string.error_servidor, error.httpCode)
         } else {
@@ -359,8 +458,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         // El servicio apagado deja a la home sin fuente de confirmaciones:
         // mientras esta pantalla este al frente, sondea ella.
         if (!prefs.vigilanciaActiva && prefs.hasToken()) arrancarPollConfirmaciones()
-        // Una tarea puede haber quedado a medio seguir al irse a background.
-        tareaActiva?.let { id -> poller.postDelayed({ sondearTarea(id) }, POLL_TAREA_MS) }
+        // Un lote puede haber quedado a medio seguir al irse a background.
+        if (loteActivo.isNotEmpty()) poller.postDelayed({ sondearLote() }, POLL_TAREA_MS)
     }
 
     override fun onPause() {

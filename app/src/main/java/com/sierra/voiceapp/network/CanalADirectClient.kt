@@ -129,6 +129,52 @@ class CanalADirectClient(
         })
     }
 
+    /**
+     * Igual que consultarEstado pero para varias tareas del mismo lote
+     * (variaciones de imagen) en un solo GET, en vez de una por tarea cada
+     * tick. limit mas alto que consultarEstado: un lote de 4 necesita mas
+     * margen para que ninguna se caiga de la ventana antes de terminar.
+     *
+     * Un task_id que no aparece en la ventana no es error -- se trata igual
+     * que "sigue pendiente" (nunca se afirma terminado sin verlo con
+     * status=done). onResult devuelve solo lo que encontro, puede venir
+     * incompleto.
+     */
+    fun consultarEstados(
+        taskIds: Set<String>,
+        onResult: (Map<String, EstadoTarea>) -> Unit,
+        onError: (CanalADirectError) -> Unit
+    ) {
+        val request = Request.Builder()
+            .url("$baseUrl/tasks?limit=40")
+            .header("X-Sierra-Token", token)
+            .get()
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                onError(CanalADirectError(e.message ?: "Error de red", null))
+            }
+
+            override fun onResponse(call: Call, response: okhttp3.Response) {
+                response.use {
+                    if (!it.isSuccessful) {
+                        onError(CanalADirectError("HTTP ${it.code}", it.code))
+                        return
+                    }
+                    try {
+                        val encontradas = parseLista(it.body?.string().orEmpty())
+                            .filter { t -> t.taskId in taskIds }
+                            .associateBy { t -> t.taskId }
+                        onResult(encontradas)
+                    } catch (e: Exception) {
+                        onError(CanalADirectError("Respuesta inesperada del servidor: ${e.message}", it.code))
+                    }
+                }
+            }
+        })
+    }
+
     private fun parseLista(raw: String): List<EstadoTarea> {
         if (raw.isBlank()) return emptyList()
         val array = if (raw.trim().startsWith("[")) JSONArray(raw) else {

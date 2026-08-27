@@ -22,6 +22,11 @@
     <string name="error_prompt_imagen_vacio">Escribí qué imagen querés primero</string>
     <string name="generando_imagen">Generando imagen…</string>
     <string name="imagen_generada">Pedido enviado — te llega a Telegram en ~10-20s</string>
+    <string name="btn_borrar_prompt">Borrar</string>
+    <string name="label_variaciones">Variaciones</string>
+    <string name="acuse_lote_encolado">Encolé %1$d imágenes.</string>
+    <string name="acuse_lote_listo">Las %1$d llegaron. Mirá el PC.</string>
+    <string name="acuse_lote_parcial">%1$d de %2$d llegaron. %3$d fallaron.</string>
     <string name="label_resolucion">Resolución</string>
     <string name="label_steps">Steps</string>
     <string name="label_cfg">CFG</string>
