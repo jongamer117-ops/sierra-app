@@ -289,45 +289,42 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <Button
-                android:id="@+id/variaciones1Button"
-                android:layout_width="wrap_content"
+                android:id="@+id/variacionesMenosButton"
+                android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_chip_seleccionado"
+                android:background="@drawable/bg_chip"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
-                android:paddingHorizontal="18dp"
+                android:padding="0dp"
+                android:text="−"
+                android:textColor="@color/sierra_text_primary"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/variacionesValorText"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
                 android:text="1"
                 android:textColor="@color/sierra_text_primary"
-                android:textSize="13sp" />
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
             <Button
-                android:id="@+id/variaciones2Button"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_chip"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingHorizontal="18dp"
-                android:text="2"
-                android:textColor="@color/sierra_text_primary"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/variaciones4Button"
-                android:layout_width="wrap_content"
+                android:id="@+id/variacionesMasButton"
+                android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@drawable/bg_chip"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
-                android:paddingHorizontal="18dp"
-                android:text="4"
+                android:padding="0dp"
+                android:text="+"
                 android:textColor="@color/sierra_text_primary"
-                android:textSize="13sp" />
+                android:textSize="18sp" />
         </LinearLayout>
 
         <TextView

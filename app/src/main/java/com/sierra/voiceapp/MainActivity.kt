@@ -113,9 +113,8 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         binding.generarImagenButton.setOnClickListener { generarImagen() }
         binding.imagenHeader.setOnClickListener { alternarSeccionImagen() }
         binding.borrarPromptButton.setOnClickListener { binding.imagenPromptEditText.setText("") }
-        binding.variaciones1Button.setOnClickListener { seleccionarVariaciones(1) }
-        binding.variaciones2Button.setOnClickListener { seleccionarVariaciones(2) }
-        binding.variaciones4Button.setOnClickListener { seleccionarVariaciones(4) }
+        binding.variacionesMenosButton.setOnClickListener { ajustarVariaciones(-1) }
+        binding.variacionesMasButton.setOnClickListener { ajustarVariaciones(1) }
 
         voz = VozSierra(this)
         SierraPresence.inicializar(this)
@@ -225,17 +224,9 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         }
     }
 
-    private fun seleccionarVariaciones(cantidad: Int) {
-        variacionesSeleccionadas = cantidad
-        binding.variaciones1Button.setBackgroundResource(
-            if (cantidad == 1) R.drawable.bg_chip_seleccionado else R.drawable.bg_chip
-        )
-        binding.variaciones2Button.setBackgroundResource(
-            if (cantidad == 2) R.drawable.bg_chip_seleccionado else R.drawable.bg_chip
-        )
-        binding.variaciones4Button.setBackgroundResource(
-            if (cantidad == 4) R.drawable.bg_chip_seleccionado else R.drawable.bg_chip
-        )
+    private fun ajustarVariaciones(delta: Int) {
+        variacionesSeleccionadas = (variacionesSeleccionadas + delta).coerceIn(1, MAX_VARIACIONES)
+        binding.variacionesValorText.text = variacionesSeleccionadas.toString()
     }
 
     private fun generarImagen() {
@@ -322,7 +313,11 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         // error antes de arrancar a sondear.
         loteErrorCount = total - taskIds.size
         ultimoDetalleTarea = null
-        pollsRestantesLote = MAX_POLLS_TAREA
+        // El Executor procesa las tareas de a una (una sola GPU): ~10s por
+        // imagen turbo (catalog.py). Con hasta MAX_VARIACIONES en serie, la
+        // ventana fija de una sola imagen se queda corta -- 10s extra de
+        // margen por cada imagen mas alla de la primera.
+        pollsRestantesLote = MAX_POLLS_TAREA + (total - 1) * POLLS_EXTRA_POR_VARIACION
 
         if (total == 1) {
             SierraPresence.entrar(EstadoSierra.EN_COLA, linea = getString(R.string.acuse_encolado))
@@ -663,5 +658,9 @@ class MainActivity : AppCompatActivity(), RecognitionListener {
         private const val POLL_CONFIRMACIONES_MS = 4_000L
         /** 3s x 40 = 120s, el mismo techo que el timeout de EN_COLA. */
         private const val MAX_POLLS_TAREA = 40
+        /** 10 polls x 3s = 30s extra de margen por cada imagen mas alla de la
+         * primera -- cubre el ~10s/imagen que tarda el Executor en serie. */
+        private const val POLLS_EXTRA_POR_VARIACION = 10
+        private const val MAX_VARIACIONES = 10
     }
 }
