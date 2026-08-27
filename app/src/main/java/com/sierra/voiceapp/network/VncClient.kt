@@ -10,6 +10,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -50,6 +51,13 @@ class VncClient(
     private var socket: Socket? = null
     private var input: DataInputStream? = null
     private var output: DataOutputStream? = null
+
+    // Escritura en socket = I/O de red. sendPointerEvent() llega desde el
+    // touch listener y frameConsumed() desde runOnUiThread -- ambos hilo
+    // principal. Escribir ahi tira NetworkOnMainThreadException (StrictMode
+    // lo prohibe, no es opcional). Todo lo que escribe pasa por este hilo
+    // dedicado, nunca por el que llama.
+    private val writer = Executors.newSingleThreadExecutor { r -> Thread(r, "VncClient-writer") }
 
     private var fbWidth = 0
     private var fbHeight = 0
@@ -106,23 +114,37 @@ class VncClient(
      * Coordenadas en el sistema del framebuffer (0..fbWidth-1, 0..fbHeight-1).
      */
     fun sendPointerEvent(x: Int, y: Int, buttonMask: Int) {
-        val out = output ?: return
         if (!running.get()) return
 
         // Clamp para no mandar coordenadas fuera del framebuffer
         val cx = x.coerceIn(0, (fbWidth - 1).coerceAtLeast(0))
         val cy = y.coerceIn(0, (fbHeight - 1).coerceAtLeast(0))
 
-        try {
-            synchronized(out) {
-                out.writeByte(5)          // PointerEvent
-                out.writeByte(buttonMask and 0xFF)
-                out.writeShort(cx)
-                out.writeShort(cy)
-                out.flush()
+        submitWrite {
+            val out = output ?: return@submitWrite
+            try {
+                synchronized(out) {
+                    out.writeByte(5)          // PointerEvent
+                    out.writeByte(buttonMask and 0xFF)
+                    out.writeShort(cx)
+                    out.writeShort(cy)
+                    out.flush()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "No se pudo enviar pointer event", e)
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "No se pudo enviar pointer event", e)
+        }
+    }
+
+    /** El caller (UI) puede llegar despues de disconnect() haber apagado
+     * `writer` -- execute() sobre un executor cerrado tira
+     * RejectedExecutionException, y no es un error real, solo perdimos la
+     * carrera contra la desconexion. Se ignora en vez de tirar la app. */
+    private fun submitWrite(work: () -> Unit) {
+        try {
+            writer.execute(work)
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+            // Ya se desconecto -- nada que escribir.
         }
     }
 
@@ -273,16 +295,29 @@ class VncClient(
         output!!.flush()
     }
 
+    /**
+     * Corre en dos hilos distintos segun quien llame: el de lectura (pedido
+     * inicial y el reintento por timeout) y el `writer` (via frameConsumed).
+     * En el de lectura un fallo ya lo captura el try/catch de connect() y
+     * dispara onError(); en el `writer` no hay nadie escuchando -- ahi una
+     * excepcion sin atrapar tira el proceso entero, no solo esta clase. Se
+     * traga el error aca: si el socket se esta cerrando, la lectura
+     * bloqueada del otro hilo ya se va a enterar y va a avisar una sola vez.
+     */
     private fun requestFramebufferUpdate(incremental: Boolean) {
         val out = output ?: return
-        synchronized(out) {
-            out.writeByte(3) // FramebufferUpdateRequest
-            out.writeByte(if (incremental) 1 else 0)
-            out.writeShort(0) // x
-            out.writeShort(0) // y
-            out.writeShort(fbWidth)
-            out.writeShort(fbHeight)
-            out.flush()
+        try {
+            synchronized(out) {
+                out.writeByte(3) // FramebufferUpdateRequest
+                out.writeByte(if (incremental) 1 else 0)
+                out.writeShort(0) // x
+                out.writeShort(0) // y
+                out.writeShort(fbWidth)
+                out.writeShort(fbHeight)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "No se pudo pedir el proximo frame", e)
         }
     }
 
@@ -346,8 +381,8 @@ class VncClient(
      * lo que evita la inundacion: nunca hay mas de un frame en vuelo.
      */
     fun frameConsumed() {
-        if (running.get()) {
-            requestFramebufferUpdate(true)
+        submitWrite {
+            if (running.get()) requestFramebufferUpdate(true)
         }
     }
 
@@ -373,6 +408,9 @@ class VncClient(
         input = null
         output = null
         socket = null
+        // Cada reconexion crea un VncClient nuevo (ver VncViewerActivity.conectar) --
+        // sin esto, cada intento deja un hilo de escritura huerfano.
+        writer.shutdownNow()
     }
 
     companion object {
