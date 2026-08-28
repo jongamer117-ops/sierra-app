@@ -440,7 +440,7 @@
             android:layout_width="match_parent"
             android:layout_height="44dp"
             android:layout_marginTop="14dp"
-            android:background="@drawable/bg_chip"
+            android:background="@drawable/bg_chip_ripple"
             android:text="@string/btn_generar_imagen"
             android:textColor="@color/sierra_text_primary" />
 
